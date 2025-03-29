@@ -1,0 +1,44 @@
+\section{Conclusions}
+\label{sec:conclusions}
+
+We presented a novel theory for the convex approximation of contact. Our
+mathematical framework establishes a family of convex approximations of
+frictional contact, and we show that previous approaches
+\cite{bib:anitescu2006,bib:todorov2011,bib:castro2022unconstrained} are members of
+this family. This framework enables us to incorporate complex physics-based
+models of contact, such as the Hunt \& Crossley \cite{bib:hunt_crossley} model,
+within a convex formulation for the first time. These models, grounded
+in physics and experimentally validated, have the potential to narrow the
+\emph{sim2real} gap. Within this framework, we develop two convex approximations
+of regularized friction: \emph{Similar} and \emph{Lagged}.
+
+This work presents a thorough characterization of these approximations in
+terms of consistency, the coupling between normal and tangential components, and
+artifacts introduced by the convex approximation. While previous work has documented
+\emph{gliding} during slip over a distance of $\delta t\mu\Vert\vf{v}_t\Vert$, we
+identify previously unrecognized artifact characteristics of compliant contact
+\cite{bib:todorov2011,bib:castro2022unconstrained}.
+We validate these findings with a rich set of test cases designed to expose these
+problems and gain insight into the new formulations. Moreover, our analysis
+led to new understandings of the coupling between normal and frictional
+components of the contact, allowing us to design a \emph{regularized} scheme that improves
+numerical conditioning during difficult to resolve impact events. 
+
+Our investigation concludes that, even though normal and friction forces are
+weakly coupled, the Lagged approximation is well-suited for the modeling of most
+robotic tasks. Moreover, the Lagged approximation completely eliminates
+artifacts associated with previous convex approximations.
+
+Our work is implemented in the open-source robotics toolkit Drake \cite{bib:drake}. 
+We rigorously tested our implementation on various robotics-relevant problems, including
+an iLQR application to highlight our differentiable pipeline and a deformable body
+simulation to demonstrate compatibility with FEM-based methods.
+
+One of the most significant limitations of our simulation pipeline is
+related to \emph{tunneling} or \emph{passthrough} problems, where objects can
+bypass each other without registering contact due to the nature of discrete contact detection.
+This issue is particularly pronounced
+with large time step sizes and thin objects. We are currently investigating a solution
+based on \emph{speculative constraints} \cite{bib:catto} for hydroelastic contact
+\cite{bib:elandt2019pressure,bib:masterjohn2021discrete} that we believe can
+help mitigate this issue.

@@ -1,0 +1,71 @@
+\section{Introduction}
+
+\IEEEPARstart{S}{imulation} of multibody systems with frictional contact is
+essential in robotics, aiding hardware optimization, controller design and
+testing, continuous integration, and data generation for machine learning.
+Accurate physics models enable advanced controller design and trajectory
+optimization algorithms. However, achieving robust, accurate, and efficient
+simulations for contact-rich robotics applications remains challenging.
+
+Rigid body dynamics with frictional contact are complicated by non-smooth
+solutions. Acceleration-level formulations can lead to singular configurations,
+known as Painlev\'e paradoxes, where solutions may not exist. Discrete
+velocity-level formulations circumvent this by allowing discrete velocity jumps and
+impulsive forces. While many variants exist, the general form of a discrete
+formulation enforces balance of momentum subject to contact constraints,
+with additional constraints to incorporate Coulomb's law of friction under the
+maximum dissipation principle. With the addition of decision
+variables and Lagrange multipliers, the result is a large and challenging-to-solve
+Non-linear Complementarity Problem (NCP) with a much larger number of
+variables than the original problem.
+
+Solving NCPs robustly and efficiently has remained elusive. NCPs are equivalent
+to non-convex global optimization problems, which are generally
+NP-hard~\cite{bib:Kaufman2008}. Therefore, NCPs may lack solutions or have
+multiple solutions. In practice, iterative solvers might incorrectly assume
+convergence or terminate early, leading to solutions that fail to satisfy the
+original equations or violate physical laws.
+
+There are other, less frequently-discussed issues --- numerical conditioning
+and implementation details --- that affect convergence properties and robustness. These
+are important problems when it comes to the simulation of complex systems, with
+either many degrees of freedom (DOFs), a large number of constraints,
+or both. Solutions that work for small systems often do not work when faced
+with real-world engineering applications.
+
+In an attempt to make the problem tractable, Anitescu introduced a convex
+approximation of contact~\cite{bib:anitescu2006}, effectively replacing
+the original NCP with a convex approximation that guarantees the existence of solutions.
+Later, Todorov~\cite{bib:todorov2011} regularized this formulation to write a strictly
+convex formulation with a unique solution. Our previous work~\cite{bib:castro2022unconstrained}
+introduced the convex Semi-Analytic Primal
+(SAP) formulation for modeling compliant contact. SAP embraces compliance
+to provide a robust and performant tool that targets robotics applications ---
+where grippers feature compliant surfaces for stable grasps, and robotic feet
+are often padded with compliant materials. Although the formulation is
+inherently compliant, rigid contact can be modeled to good approximation using a
+\emph{near-rigid} approximation. The work focused on physical correctness,
+numerical conditioning, and robustness.
+
+However, the SAP formulation has a number of limitations. The most well-known is
+the artifact of \emph{gliding} during slip, an artifact inherited from the
+original formulation by Anitescu~\cite{bib:mazhar2014} and shared by Todorov's
+formulation~\cite{bib:todorov2011}. In Anitescu's formulation, as objects slip, they
+glide at a finite distance $\delta t\mu\Vert\vf{v}_t\Vert$, proportional to the
+time step $\delta t$, the coefficient of friction $\mu$, and the slip speed
+$\Vert\vf{v}_t\Vert$. While the artifact vanishes as the time step approaches zero,
+its effect can be significant at the large time step sizes required for interactive
+simulations. Moreover, we show that both SAP's compliant model and
+Todorov's regularized model are inconsistent --- the gliding effect is also
+proportional to dissipation and does not vanish as time step goes to zero. This
+is nonphysical and makes parameter selection a cumbersome trade-off between
+physical accuracy and the magnitude of the gliding artifact. Finally, SAP's
+model of compliance is intrinsic to its convex formulation, and therefore it is
+not possible to incorporate other well-known and experimentally validated models
+of contact, such as Hertz and Hunt \& Crossley~\cite{bib:hunt_crossley}.
+
+Still, the SAP formulation provides a robust solution with theoretical
+convergence guarantees that transfer to a practical software implementation.
+Therefore, the objective of this work is to extend the SAP formulation to reduce
+and even eliminate many of these limitations, while preserving its
+convexity along with its convergence and robustness guarantees.

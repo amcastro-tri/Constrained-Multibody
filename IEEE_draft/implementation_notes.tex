@@ -1,0 +1,84 @@
+\section{Implementation}
+\label{sec:implementation}
+
+Our work is implemented in Drake \cite{bib:drake}, a robotics toolkit that
+provides modeling abstractions and optimization tools for the modeling,
+simulation, and analysis of robotics systems. Our implementation includes support
+for deformable Finite Element Models (FEM), holonomic constraints, PD
+controllers with effort limits, reflected inertia, and the modeling of
+continuous contact patches with \emph{Hydroelastic Contact}. Refer to our
+previous work for further details
+\cite{bib:castro2022unconstrained,bib:masterjohn2021discrete,bib:han2023}.
+
+SAP \cite{bib:castro2022unconstrained} uses Newton's method to compute a search
+direction $\Delta\mf{v}$ for \eqref{eq:unconstrained_fomulation} according to
+\begin{equation}
+    \mf{H}(\mf{v})\Delta\mf{v} = -\mf{r}(\mf{v}),
+    \label{eq:search_direction}
+\end{equation}
+where $\mf{r}(\mf{v})=\partial\ell/\partial\mf{v}$ is the \emph{residual} of the
+primal cost $\ell(\mf{v})$, and $\mf{H}(\mf{v})$ is its Hessian. Upon convergence,
+the residual $\mf{r}(\mf{v})$ is zero, which is equivalent to the linearized
+balance of momentum \eqref{eq:optimality_condition}. The solution at iteration
+$m$ is updated as
+\begin{equation*}
+    \mf{v}_{m+1} = \mf{v}_{m} + \alpha\Delta\mf{v},
+\end{equation*}
+with $\alpha$ determined via a line search along $\Delta\mf{v}$ to minimize
+$\ell(\mf{v})$. Our line search uses a Newton-Raphson method based on \cite[\S
+9.4]{bib:numerical_recipes}, augmented with bracketing and bisection to
+guarantee convergence. The derivatives required for the line search are computed with
+$\mathcal{O}(n)$ complexity \cite{bib:castro2022unconstrained}, enabling
+convergence to machine precision with negligible computational overhead.
+This strategy has proven to be very robust in practice.
+
+Multibody \emph{tree} structures create distinct cliques, while degrees of
+freedom (DOFs) for modeling a deformable body are also grouped into their own
+cliques \cite{bib:han2023}. Similarly, constraints involving the same pair of
+cliques are grouped into \emph{clusters}. We exploit this structure using a
+supernodal Cholesky factorization \cite[\S 9]{bib:davis2016survey} of the
+Hessian $\mf{H}$ in \eqref{eq:search_direction} that takes advantage of dense
+algebra optimizations. We compute the elimination ordering of the supernodes using
+approximate minimum degree (AMD) ordering \cite{bib:amestoy1996approximate} to
+minimize fill-ins.
+
+\subsection{Differentiation Through Contact}
+\label{sec:gradients}
+
+Our implementation in Drake provides an end-to-end solution for the computation
+of gradients through contact for applications such as system identification,
+reinforcement learning, and trajectory optimization. We implement a novel
+\emph{hybrid} approach that utilizes automatic differentiation to propagate
+gradients of the Featherstone's dynamics and geometry through the SAP
+formulation via the \emph{implicit function theorem}.
+
+We denote differentiation parameters with $\btheta\in\mathbb{R}^{n_\theta}$,
+which can include physical quantities such as mass and inertias, contact
+parameters, actuation, and even the previous state of the multibody system.
+Using this notation, SAP's optimality condition can be written in terms of the
+residual in \eqref{eq:search_direction} as $\mf{r}(\mf{v}; \btheta) = \mf{0}$.
+In this notation, the residual is a function of the
+generalized velocities $\mf{v}$ \emph{given} a set of parameters $\btheta$.
+
+We use the implicit function theorem on $\mf{r}(\mf{v}; \btheta) = \mf{0}$ 
+\begin{equation*}
+    \frac{\partial \mf{r}(\mf{v}; \btheta)}{\partial\mf{v}}\frac{d\mf{v}}{d\btheta} + \frac{\partial \mf{r}(\mf{v}; \btheta)}{\partial\btheta} = \mf{0},
+\end{equation*}
+and note that $\partial\mf{r}/\partial\mf{v}=\mf{H}(\mf{v})$ to write
+\begin{equation}
+    \mf{H}\frac{d\mf{v}}{d\btheta} = -\frac{\partial \mf{r}(\mf{v}; \btheta)}{\partial\btheta}.
+    \label{eq:v_derivatives}
+\end{equation}
+
+In our approach, the expensive-to-compute Cholesky factorization of $\mf{H}$ is
+only computed at each Newton iteration in \eqref{eq:search_direction} during
+forward simulation. Upon convergence, $\mf{H}$ is already assembled and
+factorized and is thus reused in \eqref{eq:v_derivatives} an additional
+$n_\theta$ times to propagate derivatives through the solver into gradients
+$d\mf{v}/d\btheta$ of the generalized velocities.
+
+In our hybrid approach, $\partial\mf{r}/\partial\btheta$ in
+\eqref{eq:v_derivatives} is computed with automatic differentiation. This
+enables the computation of gradients through arbitrarily complex geometric
+models, while the implicit function theorem propagates derivatives accurately
+and efficiently through the contact resolution phase.

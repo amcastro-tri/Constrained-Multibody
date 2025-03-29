@@ -1,0 +1,44 @@
+\section{Novel Contributions}
+
+We seek to mitigate nonphysical artifacts introduced by by existing convex
+approximations \cite{bib:anitescu2006, bib:todorov2011,
+bib:castro2022unconstrained}, incorporate experimentally validated contact
+models, increase the fidelity of frictional contact, and improve numerical
+performance.
+
+We extend SAP \cite{bib:castro2022unconstrained} by introducing incremental
+potentials~\cite{bib:pandolfi2002}. Previous work introduces Incremental
+Potential Contact (IPC)~\cite{bib:li2020ipc}, a method that guarantees
+intersection-free solutions. The authors demonstrate their method in a large
+variety of simulation cases. However, like NCPs, this non-convex formulation can
+either have no solution (the feasible set is empty) or fall into a local minimum
+that does not obey the law of physics.
+
+In this work, we develop conditions to design convex incremental potentials
+that can be incorporated into our SAP~\cite{bib:castro2020} formulation. To the
+knowledge of the authors, conditions for convexity in this context have never
+been explored.
+
+We summarize our novel contributions as follows:
+\begin{enumerate}
+    \item We introduce a framework to generate convex approximations of
+    arbitrarily complex contact models.
+    \item We present necessary conditions for existence and convexity of an
+    incremental potential.
+    \item We show how to incorporate Coulomb friction independent of the
+    complexity of the compliant contact model. Our framework supports arbitrary
+    forms of regularization, facilitating the design of accurate models with
+    desirable numerical properties.
+    \item We present the first convex approximation of compliant
+    contact with Hunt \& Crossly dissipation~\cite{bib:hunt_crossley}.
+    \item We show that the same framework can be used to incorporate barrier
+    functions to model rigid contact.
+    \item In addition to SAP, we develop two new formulations of contact with
+    dry friction within this same framework.
+\end{enumerate}
+
+In addition to these main research contributions, our work includes a fully
+differentiable open-source implementation in Drake~\cite{bib:drake}. We compare
+models in Section~\ref{sec:comparative_analysis}, validate them in
+Section~\ref{sec:results}, and stress test them with engineering applications
+cases in Section~\ref{sec:applications}.

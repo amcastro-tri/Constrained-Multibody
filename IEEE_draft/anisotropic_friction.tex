@@ -1,0 +1,56 @@
+\section{Anisotropic Coulomb Friction}
+\label{sec:anisotropic_friction}
+
+When friction is
+anisotropic, the friction force can have a component perpendicular to the slip
+velocity and, even in the absence of external forces, objects follow curved
+paths~\cite{bib:walker2019}. The ellipsoidal friction cone
+$\mathcal{F}=\{[\vf{x}_t,
+x_n]\in\mathbb{R}^3\,|\,\Vert\vf{\mu}^{-1}\vf{x}_t\Vert \le x_n\}$, with
+$\vf{\mu}\succeq 0$ the friction tensor, is a popular approximation. $\vf{\mu}$
+is diagonal when expressed in a frame aligned with its principal axes, and
+$\vf{\mu} = \mu\mf{I}$ for isotropic friction.
+
+We write an anisotropic model of Coulomb friction that satisfies
+the principle of maximum dissipation
+\begin{equation}
+    \bgamma_{t}=\argmax_{\bxi\in\mathcal{F}}-\vf{v}_{t}\cdot\bxi.
+    \label{eq:maximum_dissipation_principle}
+\end{equation}
+
+We can solve this problem analytically by a change of variables that maps the
+ellipsoidal section of the friction cone into a circular section. The result is
+\begin{equation}
+    \bgamma_{t}=-\vf{\mu}\gamma_n\hat{\vf{t}}(\vf{\mu}\vf{v}_{t}),
+    \label{eq:anisotropic_friction_model}
+\end{equation}
+where we define
+$\hat{\vf{t}}(\vf{\mu}\vf{v}_{t})=\vf{\mu}\vf{v}_{t}/\Vert\vf{\mu}\vf{v}_{t}\Vert$.
+This friction model opposes slip when tensor $\vf{\mu}$ is isotropic, while it
+introduces a component perpendicular to the line of motion, as
+experimentally confirmed in~\cite{bib:walker2019}.
+
+As with~\eqref{eq:generic_friction_model}, we write a generic form of
+this model as
+\begin{eqnarray}
+    \bgamma_{t}=g(\Vert\tilde{\vf{v}}_t\Vert, v_n)\,\tilde{\vf{t}},
+    \label{eq:generic_anisotropic_model}
+\end{eqnarray}
+where we defined the \emph{tilde} quantities as
+$\tilde{\vf{v}}_t=\vf{\mu}\,\vf{v}_{t}$ and
+$\tilde{\vf{t}}=\vf{\mu}\,\hat{\vf{t}}(\tilde{\vf{v}}_t)$, consistent with
+\eqref{eq:anisotropic_friction_model}. We verify that
+\begin{equation*}
+    \frac{\partial\bgamma_t}{\partial\mf{v}_t}=\frac{\partial g}{\partial \Vert\tilde{\vf{v}}_t\Vert}\tilde{\mf{P}}+g\frac{\tilde{\mf{P}}^\perp}{\Vert\tilde{\vf{v}}_t\Vert},
+\end{equation*}
+with $\tilde{\mf{P}}=\mf{P}(\tilde{\vf{t}})$ and $\tilde{\mf{P}}^\perp =
+\vf{\mu}\mf{P}^\perp(\hat{\vf{t}}(\tilde{\vf{v}}_t))\vf{\mu}=\vf{\mu}^2-\tilde{\mf{P}}$.
+Therefore, $\partial\bgamma_t/\partial\mf{v}_t$ for~\eqref{eq:generic_anisotropic_model}
+is symmetric and condition~\eqref{eq:curl_normal} is met.
+
+Using these \emph{tilde} variables, we define a potential for Lagged
+\begin{equation*}
+    \ell_t(\vf{v}_t) = \gamma_{n0}\,\varepsilon_s\,F(\Vert\tilde{\vf{v}}_t\Vert/\varepsilon_s),
+\end{equation*}
+and a potential for Similar is obtained by updating \eqref{eq:similar_grouping}
+to $z=v_n-\varepsilon_sF(\Vert\tilde{\vf{v}}_t\Vert/\varepsilon_s)$.

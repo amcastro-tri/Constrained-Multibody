@@ -1,0 +1,17 @@
+\section{Applications}
+\label{sec:applications}
+
+We simulate various robotics-relevant cases to evaluate model usefulness,
+accuracy, numerical conditioning, and solver performance. In all simulations,
+the solver iterates fully to convergence with no early termination, using a
+relative tolerance $\varepsilon_r=10^{-5}$ \cite{bib:castro2022unconstrained}.
+
+\input{clutter.tex}
+
+\input{franka_hand.tex}
+
+\input{barrett_hand.tex}
+
+\input{trajopt.tex}
+
+\input{deformable.tex}

@@ -1,0 +1,467 @@
+\section{Mathematical Formulation}
+\label{sec:optimization_framework}
+
+\subsection{Preliminaries}
+
+I'll use notation from the articulated body dynamics community
+\cite{bib:featherstone2008_rigid_body_dynamics_algorithms,bib:jain2010_robot_multibody_dynamics},
+which is most used in robotics and graphics, simply because it's compact. I'll
+highlight important aspects and the specific case for a single rigid body as I
+go.
+
+State is described by generalized positions $\mf{q} \in \mathbb{R}^{n_q}$ and
+generalized velocities $\mf{v} \in \mathbb{R}^{n_v}$, where $n_q$ and $n_v$ are the
+number of generalized positions and velocities, respectively. Time derivatives
+of the generalized positions relate to the generalized velocities by the kinematic map
+$\dot{\mf{q}} = \mf{N}(\mf{q})\mf{v}$. 
+
+There are several options to choose from to define generalized positions and
+velocities for a single rigid body. For instance, to describe spatial
+orientation, we can use roll-pitch-yaw angles or quaternions. For generalized
+velocities there's notice that $\dot{\mf{q}} = \mf{N}(\mf{q})\mf{v}$ allows for
+$\mf{v} \ne \dot{\mf{q}} $. For instance, a very common choice of generalized
+velocities to describe rotations is the angular velocitity of the body. There
+are published tables that allow to compute $\mf{N}(\mf{q})$ for different
+choices of generalized coordinates 
+
+
+
+We first introduce notation and conventions used in our framework. We closely
+follow the notation in our previous work~\cite{bib:castro2022unconstrained,bib:masterjohn2021discrete},
+later extended to deformable Finite Element Method (FEM) models in~\cite{bib:han2023}
+and Material Point Method (MPM) models in~\cite{bib:zong2024_convex_mpm}.
+
+State is described by generalized positions $\mf{q} \in \mathbb{R}^{n_q}$ and
+generalized velocities $\mf{v} \in \mathbb{R}^{n_v}$, where $n_q$ and $n_v$ are the
+number of generalized positions and velocities, respectively. Time derivatives
+of the generalized positions relate to the generalized velocities by the kinematic map
+$\dot{\mf{q}} = \mf{N}(\mf{q})\mf{v}$. We use joint coordinates to describe
+articulated rigid bodies.
+
+Consider a system with $n_c$ constraints introducing $n_\text{eq}$ constraint
+equations. Constraint velocities $\mf{v}_c\in\mathbb{R}^{n_\text{eq}}$ are given
+by $\mf{v}_c=\mf{J}\mf{v}+\mf{b}$, where $\mf{J}$ is the stacked Jacobian for
+all constraints and $\mf{b}$ is a bias term. Following
+\cite{bib:castro2022unconstrained}, we write a symplectic Euler scheme with
+fixed time steps of size $\delta t$ as
+\begin{flalign}
+    % Momentum equation.
+	&\mf{M}(\mf{q}_0)(\mf{v}-\mf{v}_0) =\nonumber\\
+    &\qquad\delta t\,\mf{k}_1(\mf{q},\mf{v}) + \delta t\,\mf{k}_2(\mf{q}_0,\mf{v}_0) +
+	\mf{J}(\mf{q}_0)^T\mf{\bgamma},
+    \label{eq:scheme_momentum}\\
+    &\mf{q} = \mf{q}_0 + \delta t \mf{N}(\mf{q}_0)\mf{v}\nonumber,
+\end{flalign}
+where quantities with the naught subscript are evaluated at the previous time
+step $t^n$ and quantities without subscripts are evaluated at the next time step
+$t^{n+1}= t^n+\delta t$. $\mf{M}$ is the joint space mass matrix. Stiff terms,
+such as springs, and stabilizing terms, such as damping and rotor inertias, are
+treated implicitly in $\mf{k}_1$. Smooth, non-stiff terms such as gravity,
+gyroscopic forces, and feed-forward actuation are treated explicitly in
+$\mf{k}_2$. Vector $\bgamma\in\mathbb{R}^{n_\text{eq}}$ corresponds to
+constraint impulses. Our implementation in Drake~\cite{bib:drake} includes
+contact constraints, holonomic constraints (e.g. weld, distance, coupler), and PD
+controllers with effort limits \cite{bib:castro2022unconstrained, bib:han2023}.
+
+We define the momentum residual $\mf{m}(\mf{v})$ as
+\begin{equation*}
+    \mf{m}(\mf{v}) = \mf{M}(\mf{q}_0)(\mf{v}-\mf{v}_0) -
+    \delta t\,\mf{k}_1(\mf{q},\mf{v}) - \delta t\,\mf{k}_2(\mf{q}_0,\mf{v}_0),
+\end{equation*}
+and define the \emph{free motion velocities} $\mf{v}^*$ as the solution to
+$\mf{m}(\mf{v}^*)=\mf{0}$, that is, the velocities the system would have in the
+absence of constraint forces. SAP \cite{bib:castro2022unconstrained} linearizes
+\eqref{eq:scheme_momentum} at $\mf{v} = \mf{v}^*$ as
+\begin{eqnarray}
+	\mf{A}(\mf{v}-\mf{v}^*) = \mf{J}^T\bgamma,
+    \label{eq:optimality_condition}
+\end{eqnarray}
+where $\mf{A}$ is a symmetric positive-definite (SPD) approximation of the gradient of the momentum residual
+accurate to first order, i.e.
+\begin{align*}
+	\left. \frac{\partial \mf{m}}{\partial \mf{v}} \right|_{\mf{v}=\mf{v}^*} = \mf{A} + \mathcal{O}(\delta t).
+\end{align*}
+
+While early work~\cite{bib:stewart1996implicit, bib:anitescu1997} use $\mf{A} =
+\mf{M}(\mf{q}_0)$, the mass matrix at the previous time step, our formulation
+incorporates the modeling of joint springs, damping, and rotor inertia
+implicitly~\cite{bib:castro2022unconstrained}. 
+
+Traditional NCP formulations supplement~\eqref{eq:optimality_condition} with
+constraint equations to model contact. Additional constraint equations, slack
+variables, and Lagrange multipliers lead to a large and challenging-to-solve NCP.
+Instead, SAP~\cite{bib:castro2022unconstrained} follows a different approach.
+Inspired by the analytical inverse dynamics from Todorov~\cite{bib:todorov2011},
+SAP eliminates constraints analytically to write an unconstrained convex
+optimization problem for the next time step velocities
+\begin{eqnarray}
+	\min_{\mf{v}} \ell_p(\mf{v}) = \frac{1}{2}\Vert\mf{v}-\mf{v}^*\Vert_{A}^2 +
+	\ell_R(\mf{v}),
+    \label{eq:unconstrained_fomulation}
+\end{eqnarray}
+where $\Vert\mf{x}\Vert_{A}^2 = \mf{x}^T\mf{A}\,\mf{x}$, and $\ell_R(\mf{v})$ is
+a regularizing term that penalizes contact impulses. It can be shown that
+SAP's~\cite{bib:castro2022unconstrained} formulation models linear compliant contact
+with a Kelvin-Voigt (linear) model of damping. The formulation is strongly
+convex, with convergence guarantees that lead to robust software
+implementations. Although the formulation is inherently compliant with
+regularized friction, \cite{bib:castro2022unconstrained}~shows how rigid contact
+can be modeled to good approximation using a \emph{near-rigid} approximation.
+
+\subsection{Incremental Potentials}
+
+Inspired by \emph{incremental potentials} \cite{bib:li2020ipc,
+bib:pandolfi2002}, we extend formulation \eqref{eq:unconstrained_fomulation} by
+replacing the \emph{regularizer} cost $\ell_R(\mf{v})$ with a more general
+incremental potential $\ell_c(\mf{v}; \mf{x}_0)$ to model contact and other
+constraints. This potential depends on the generalized velocities $\mf{v}$,
+\emph{given} a previous state $\mf{x}_0$, making it inherently discrete---unlike
+continuous potentials like gravity or electric fields. Nonetheless, as we will
+discuss, these discrete potentials have real physical relevance. The presence of
+the quadratic term $\Vert\mf{x}\Vert_{A}^2$ ensures strong convexity of the
+optimization problem \eqref{eq:unconstrained_fomulation} when $\ell_c$ is
+convex, guaranteeing a unique solution. Developing such convex potentials for
+frictional contact modeling is the primary aim of this work.
+
+Within this framework, the balance of momentum~\eqref{eq:optimality_condition}
+is the optimality condition of~\eqref{eq:unconstrained_fomulation}, and impulses
+emerge as a result of the contact potentials
+\begin{eqnarray}
+    \bgamma(\mf{v}_c; \mf{x}_0) = -\frac{\partial\ell_c(\mf{v}_c;
+    \mf{x}_0)}{\partial\mf{v}_c},
+    \label{eq:gamma_from_potential}
+\end{eqnarray}
+where we use the notation $\partial f/\partial\vf{x} = \nabla f \in\mathbb{R}^n$
+to denote the gradient of a scalar function $f(\vf{x}):
+\mathbb{R}\rightarrow\mathbb{R}^n$. As with SAP, we consider potential functions
+that are
+\emph{separable}
+\begin{eqnarray}
+    \ell_c(\mf{v}_c; \mf{x}_0) = \sum_{i=1}^{n_c}\ell_{c,i}(\vf{v}_{c,i};
+    \mf{x}_0),
+    \label{eq:separable_potential}
+\end{eqnarray}
+where $\mf{v}_c$ is the stacked vector of individual constraint velocities
+$\vf{v}_{c,i}$. For contact constraints, we define a contact frame $C_i$ for
+which we arbitrarily choose the $z\text{-axis}$ to coincide with the contact
+normal $\hat{\vf{n}}_i$. In this frame, the normal and tangential components of
+$\vf{v}_{c,i}$ are given by $v_{n,i} = \hat{\vf{n}}_i\cdot\vf{v}_{c,i}$ and
+$\vf{v}_{t,i} = \vf{v}_{c,i}-v_{n,i}\hat{\vf{n}}_i$ respectively, and
+$\vf{v}_{c,i}=[\vf{v}_{t,i}\,v_{n,i}]$. By convention, we define the relative
+contact velocity $\vf{v}_{c,i}$ and normal $\hat{\vf{n}}_i$ such that $v_{n,i} >
+0$ for objects moving away from each other.
+
+Using this separable potential \eqref{eq:separable_potential}
+in~\eqref{eq:gamma_from_potential}, the impulse vector $\bgamma$ is the stacked
+vector of individual constraint contributions $\bgamma_i(\mf{v}_{c,i}; \mf{x}_0)
+= -\partial\ell_{c,i}/\partial\mf{v}_{c,i}$. We highlight the dependence
+on the previous time step state $\mf{x}_0$ to emphasize the discrete (or
+incremental) nature of these potentials and the resulting impulses. However,
+hereinafter, we write $\bgamma_i(\vf{v}_{c,i})$ and $\ell_{c,i}(\vf{v}_{c,i})$ to
+shorten notation, and the functional dependence on the previous time step state
+is implicitly assumed.
+
+\section{Frictionless Contact}
+\label{sec:frictionless_contact}
+
+We discuss frictionless contact first to introduce the framework and notation.
+We consider a generic normal force model
+\begin{equation}
+    f_n(\phi, v_n),
+    \label{eq:generic_force_law}
+\end{equation}
+as a function of the \emph{signed distance} $\phi$ (defined negative when
+objects overlap) and the normal velocity $v_n$ (defined positive when objects
+separate). To write a discrete incremental potential, we use a first order
+approximation of the signed distance $\phi=\phi_0+\delta t v_n$, implicit in the
+next time step velocity $v_n$. Using this approximation, we define a discrete
+impulse as
+\begin{equation}
+    n(v_n; \phi_0) = \delta t\,f_n(\phi_0+\delta t\,v_n, v_n),
+    \label{eq:discrete_normal_impulse}
+\end{equation}
+and the normal impulse is $\gamma_n(v_n)=n(v_n; \phi_0)$. Therefore, the
+potential for such model is given by
+\begin{equation*}
+    \ell_n(v_n) = -N(v_n),
+\end{equation*}
+with $N(v_n)$ the antiderivative of $n(v_n)$, i.e. $n(v_n) = N'(v_n)$.
+
+The Hessian of this cost is
+\begin{equation*}
+    \frac{d^2\ell_n}{dv_n^2} = -\delta t^2\frac{\partial f_n}{\partial\phi} - \delta t\frac{\partial f_n}{\partial v_n},
+\end{equation*}
+and therefore 
+\begin{equation}
+    \frac{\partial f_n}{\partial\phi}\le 0\text{ and }
+    \frac{\partial f_n}{\partial v_n}\le 0,
+    \label{eq:normal_sufficient_conditions}
+\end{equation}
+are sufficient conditions for the cost $\ell_n(v_n)$ to be convex.
+
+\subsection{Barrier Functions for Rigid Contact}
+
+Interior-point methods (IP) are the standard for solving optimization problems
+with inequality constraints, essential for rigid contact modeling. IP solvers
+can also handle a richer set of constraints, like conic constraints, as needed
+to model Coulomb friction. Notable solvers include open-source
+Ipopt~\cite{bib:wachter2006} and proprietary options like
+Gurobi~\cite{bib:gurobi} and Mosek~\cite{bib:mosek}. Fundamentally, IP methods
+replace constraints with a barrier function that penalizes infeasible solutions.
+Logarithmic functions are commonly used, which for rigid contact penalize
+distances near zero
+\begin{equation*}
+    \ell_n(\phi) = -\kappa \ln(\phi),
+\end{equation*}
+while penetration states ($\phi\le0$) are infeasible. The barrier parameter
+$\kappa > 0$ is iteratively reduced to approach a rigid approximation, though it
+can never reach zero. Therefore, in practice the solution is effectively
+compliant, with a force law that fits the framework
+\eqref{eq:generic_force_law}
+\begin{equation}
+    f_n(\phi, v_n) = \frac{\kappa}{\phi}\quad  \phi \ge 0.
+    \label{eq:logarithmic_barrier_force}
+\end{equation}
+
+As a physical model of contact, users may struggle to
+interpret~\eqref{eq:logarithmic_barrier_force}, which has a parameter $\kappa$
+with the unit of energy and nonphysical action at infinite distance. In
+practice, $\kappa$ is not exposed, but hidden as part of the solver internals.
+Users \emph{believe} they are working with a true model of rigid contact when,
+in reality, the solver is using an compliant model approximation. Even if
+$\kappa$ can be reduced to very small values (according to some hidden metric),
+the solver often ends up solving a much more challenging problem than needed
+since, in reality, physical materials have finite stiffness.
+
+\subsection{Incremental Potential Contact}
+
+IPC ~\cite{bib:li2020ipc} is an optimization-based framework to model rigid
+contact and guarantee intersection-free solutions. The method attains strong
+robustness given its implicit time-stepping scheme and line
+search augmented with continuous collision detection (CCD) to maintain
+feasibility. However, IPC formulates a non-convex optimization problem and can
+fall into local minima, not satisfying the original physical laws. Moreover, the
+method lacks convergence guarantees, as properly pointed out by the original
+authors.
+
+Similar to the logarithmic barrier functions of IP methods, IPC proposes a
+smooth $C^2$ potential
+\begin{eqnarray*}
+    \ell_c(\phi) = -\kappa_\text{IPC}\,(\hat{d}-\phi)_+^2\ln(\phi/\hat{d})
+\end{eqnarray*}
+where $(a)_+ = \max(0, a)$, $\kappa_\text{IPC}$ is a parameter automatically
+adjusted to improve numerical conditioning, and $\hat{d}$ is a user parameter.
+Typical values of $\hat{d}$ used by the original authors in their extensive
+simulations test cases are in the range $0.1\text{ mm}$ to $1\text{ mm}$. This
+potential is proposed to achieve intersection-free solutions, eliminate
+nonphysical action at infinite distances, and maintain smoothness for better
+numerics. We observe that this method again fits the framework
+\eqref{eq:generic_force_law}, with a \emph{compliant} contact force law of the
+form
+\begin{equation*}
+    f_n(\phi, v_n) = \kappa_\text{IPC}\,(\hat{d}-\phi)_+\left[\frac{(\hat{d}-\phi)_+}{\phi} - 2\ln(\phi/\hat{d})\right],
+\end{equation*}
+which is only non-zero for $\phi\in(0, \hat{d}]$. Performing Taylor expansion around
+$\phi=\hat{d}$, we see that $f_n\approx
+3\kappa_\text{IPC}(\hat{d}-\phi)_+^2/\hat{d}$, and the force models a quadratic spring of
+stiffness $\kappa_\text{IPC}$ (with units of N/m). In the limit to
+$\phi\rightarrow 0^+$, the force approximates
+$f_n\approx\kappa_\text{IPC}\hat{d}^2/\phi$, the interior point force
+\eqref{eq:logarithmic_barrier_force}.
+
+In summary, this method models a thin, compliant layer around a rigid core
+instead of the strict non-penetration conditions largely favored in the
+literature. We do not view this as a flaw, as the authors have demonstrated their method's
+effectiveness through extensive simulation studies. Instead, we see this as
+an indication of the levels of rigidity that can be achieved in practice.
+
+\subsection{Compliant Contact}
+
+Previous sections demonstrate that even rigid approximations are effectively
+compliant when analyzed in detail. This is precisely why this work embraces
+compliance to develop a physics-based model that is transparent to users.
+
+We consider a linear elastic law in the signed distance $\phi$ with Hunt \&
+Crossley~\cite{bib:hunt_crossley} dissipation. As long as conditions
+\eqref{eq:normal_sufficient_conditions} are met, other alternatives such as the
+Hertz model can be used. In practice, however, users often find the linear model
+satisfactory. We write this model within framework~\eqref{eq:generic_force_law}
+as
+\begin{equation}
+    f_n(\phi, v_n) = k\,(-\phi)_+\,(1-dv_n)_+,
+    \label{eq:linear_compliance_with_hunt_crossley}
+\end{equation}
+where $k$ is the linear contact stiffness and $d$ is the Hunt \&
+Crossley dissipation parameter. This force is zero whenever $v_n \ge \hat{v}$,
+with
+\begin{equation}
+    \hat{v}=\min(-\phi_0/\delta t, 1/d),
+    \label{eq:breaking_velocity}
+\end{equation}
+the minimum normal velocity for contact to break. For $v_n < \hat{v}$ we define
+the (indefinite) antiderivative $N^+(v_n)$
+\begin{align*}
+    N^+(v_n; \phi_0) &= \\
+    \delta t\,k\,&\left[-v_n\left(\phi_0 + \frac{1}{2}\delta t\,v_n\right) + d\,\frac{v_n^2}{2}\left(\phi_0 + \frac{2}{3}\delta t\,v_n\right)\right].
+\end{align*}
+
+%However, we define the elastic contribution at the previous time step $f_{0} =
+%-k\,\phi_0$ and write instead
+%\begin{align*}
+%    N^+(v_n; f_{0}) &= \\
+%    &\delta t\left[v_n\left(f_0 + \frac{1}{2}\Delta f\right) - d\,\frac{v_n^2}{2}\left(f_0 + \frac{2}{3}\Delta f\right)\right],\nonumber
+%\end{align*}
+%with $\Delta f = -\delta t\,k\,v_n$. This form is numerically more stable to
+%incorporate the modeling of continuous contact patches
+%\cite{bib:masterjohn2021discrete} for which it is possible to have $k=0$ (or
+%close to zero) for small face patches, but with a finite value of the product
+%$f_{0} = -k\,x_0$.
+
+Since the impulse is zero for $v_n \ge \hat{v}$, its antiderivative must be
+constant. Therefore, we write
+\begin{equation*}
+    N(v_n) = N^+(\min(v_n, \hat{v}); f_{0}),
+\end{equation*}
+resulting in a continuous function for all values of $v_n$.
+
+Though inherently compliant, this model effectively handles very stiff contact
+due to the robustness of our convex formulation. In Section~\ref{sec:results},
+we use Hertz theory to estimate steel stiffness, and
+Section~\ref{sec:applications} demonstrates that our approach can manage
+stiffnesses up to five orders of magnitude higher.
+
+Finally, we observe that this model is easily extended to incorporate
+\emph{hydroelastic contact}~\cite{bib:elandt2019pressure} --- a modern rendition
+of \emph{Elastic Foundation}~\cite[\S 4.3]{bib:johnson1987_contact_mechanics} to
+model continuous contact patches. We use the approach
+in~\cite{bib:masterjohn2021discrete}.
+
+\section{Contact with Friction}
+
+\subsection{Regularized Friction}
+\label{sec:regularized_friction}
+
+As with normal impulses $\gamma_n(v_n)$, friction can be
+modeled as a continuous function of state using a \emph{regularized}
+approximation. Consider the model of isotropic friction
+\begin{eqnarray}
+    \bgamma_t(\vf{v}_c) &=&
+    -\mu\,f(\Vert\vf{v}_t\Vert/\varepsilon_s)\,\gamma_n(v_n)\,\hat{\vf{t}}\nonumber\\
+    f(s) &=& \frac{s}{\sqrt{1+s^2}}
+    \label{eq:regularized_friction}\\
+    \hat{\vf{t}} &=& \frac{\vf{v}_t}{\Vert\vf{v}_t\Vert}\nonumber
+\end{eqnarray}
+where the function $f(s)\le 1$ \emph{regularizes} Coulomb friction with
+$\varepsilon_s$ the regularization parameter. When
+$\Vert\vf{v}_t\Vert\ll\varepsilon_s$, the model behaves as viscous damping with
+high viscosity. When $\Vert\vf{v}_t\Vert \gg \varepsilon_s$, the model
+approximates Coulomb's law, with friction opposing slip velocity according to
+the maximum dissipation principle and $\Vert\bgamma_t\Vert \rightarrow
+\mu\gamma_n$. The choice of function $f(s)$ is somewhat arbitrary, as long as
+$f(s) \le 1$ and $f(s)=0$ at $s=0$. We choose $f(s)$ such that
+\eqref{eq:regularized_friction}~can be simplified to
+\begin{eqnarray}
+    \bgamma_t(\vf{v}_c) &=& -\mu\,\gamma_n(v_n)\,\hat{\vf{t}}_s\nonumber\\
+    \hat{\vf{t}}_s &=&
+    \frac{\vf{v}_t}{\sqrt{\Vert\vf{v}_t\Vert^2+\varepsilon_s^2}}
+    \label{eq:regularized_friction_soft}
+\end{eqnarray}
+where we define the regularized or \emph{soft}
+tangent vector $\hat{\vf{t}}_s$, which can be shown to be the gradient with
+respect to $\vf{v}_t$ of the \emph{soft} norm
+$\Vert\vf{x}\Vert_s=\sqrt{\Vert\vf{x}\Vert^2+\varepsilon_s^2} - \varepsilon_s$
+(Appendix~\ref{sec:soft_norms}). Unlike $\hat{\vf{t}}$, which is not
+well-defined at $\vf{v}_t=\vf{0}$, $\hat{\vf{t}}_s$ is well-defined and continuous
+for all values of slip velocity. Moreover, \eqref{eq:regularized_friction_soft}
+has continuous gradients, a  desirable property since it ensures the Hessian of
+our convex formulation remains well-behaved, improving the convergence rate of
+Newton iterations.
+
+At this point, however, it is still unclear whether it is possible to incorporate such a
+model of frictional contact into a convex formulation. We do know
+SAP~\cite{bib:castro2022unconstrained} is a convex formulation of regularized friction
+\begin{eqnarray}
+    \bgamma_t(\vf{v}_c) &=& -\min\left(\frac{\Vert\vf{v}_t\Vert}{R_t}, \mu\gamma_n(v_n)\right)\hat{\vf{t}}
+    \label{eq:sap_friction_regularization}
+\end{eqnarray}
+where $R_t$ is SAP's regularization parameter~\cite{bib:castro2022unconstrained}.
+However, we seek a model superior to SAP's for two reasons
+\begin{enumerate}
+    \item SAP's linear model of dissipation can lead to severe artifacts at
+    large dissipation values (see Section~\ref{sec:results}).
+    \item  Although bounds on SAP's drift speed can be estimated, it is not possible to determine
+    it precisely~\cite{bib:castro2022unconstrained}.
+\end{enumerate}
+
+In contrast, normal impulses of the form~\eqref{eq:discrete_normal_impulse}
+allow the incorporation of physics-based models, such as the experimentally
+validated Hunt \& Crossley model, and drift in \eqref{eq:regularized_friction}
+is controlled precisely via $\varepsilon_s$. In the following sections, we
+investigate the conditions for writing convex approximations of compliant models
+\eqref{eq:discrete_normal_impulse} with regularized friction
+\eqref{eq:regularized_friction}.
+
+\subsection{Irrotational Contact Fields}
+
+As is in~\cite{bib:castro2020}, we combine compliant contact with regularized
+friction to write
+\begin{eqnarray}
+	\bgamma(\vf{v}_c) &=&
+	\begin{bmatrix}
+		-\mu\,n(v_n)\,\hat{\vf{t}}_s(\vf{v}_t)\\
+		n(v_n)
+	\end{bmatrix}.
+    \label{eq:total_impulse}
+\end{eqnarray}
+
+However, this model is not necessarily the result of a potential and $\bgamma(\vf{v}_{c})
+\ne -\partial\ell_{c}/\partial\vf{v}_{c}$ in general. In this section, we seek existence
+conditions for $\ell_c(\mf{v})$ along additional conditions for convexity.
+
+Helmholtz's theorem~\cite{bib:bhatia2012} states that any vector field admits
+the decomposition into an irrotational field (zero curl) and a solenoidal field
+(zero divergence)
+\begin{eqnarray}
+    \bgamma(\vf{v}_c) = -\frac{\partial\ell(\vf{v}_c)}{\partial\vf{v}_c} +
+    \nabla\times\vf{A}(\vf{v}_c)
+    \label{eq:helmholtz_decomposition}
+\end{eqnarray}
+with $\ell(\vf{v}_c)$ a scalar potential and $\vf{A}(\vf{v}_c)$ a \emph{vector
+potential}.
+
+This work ignores the solenoidal component and investigates \emph{irrotational
+fields}, which satisfy the condition
+\begin{equation}
+    \nabla\times\bgamma = \mf{0}.
+    \label{eq:gamma_curl}
+\end{equation}
+
+The normal component in~\eqref{eq:gamma_curl}
+\begin{equation}
+    \frac{\partial\gamma_{t,1}}{\partial v_{t,2}}=\frac{\partial\gamma_{t,2}}{\partial v_{t,1}},
+    \label{eq:curl_normal}
+\end{equation}
+states that two-dimensional field $\bgamma_t(\vf{v}_t)$ is irrotational in the
+$\vf{v}_t$ plane. Consider the generic isotropic friction model
+\begin{equation}
+    \bgamma_t=g(\Vert\mf{v}_t\Vert, v_n)\hat{\mf{t}}
+    \label{eq:generic_friction_model}
+\end{equation}
+whose gradient is
+\begin{equation*}
+    \frac{\partial\bgamma_t}{\partial\mf{v}_t}=\frac{\partial g}{\partial \Vert\mf{v}_t\Vert}\mf{P}+g\frac{\mf{P}^\perp}{\Vert\mf{v}_t\Vert}
+\end{equation*}
+with symmetric projection matrices $\mf{P}$ and $\mf{P}^\perp$ (see
+Appendix~\ref{sec:soft_norms}). Therefore, $\partial\bgamma_t/\partial\mf{v}_t$
+is symmetric, and condition~\eqref{eq:curl_normal} is satisfied. Thus isotropic
+friction fields are irrotational. While this work focuses on isotropic friction,
+Appendix \ref{sec:anisotropic_friction} shows how to incorporate anisotropic
+friction within this same framework.
+
+Finally, the tangential components in~\eqref{eq:gamma_curl} lead to the
+condition
+\begin{equation}
+    \frac{\partial\bgamma_t}{\partial v_n}=\frac{\partial\gamma_n}{\partial\mf{v}_t},
+    \label{eq:curl_tangent}
+\end{equation}
+a condition generally not met by arbitrary contact models.

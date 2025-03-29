@@ -1,0 +1,12 @@
+We present a framework for generating convex approximations of complex contact
+models, incorporating experimentally validated models like Hunt \& Crossley
+coupled with Coulomb's law of friction alongside the principle of maximum
+dissipation. Our approach is robust across a wide range of stiffness values,
+making it suitable for both compliant surfaces and rigid approximations. We
+evaluate these approximations across a wide variety of test cases, detailing
+properties and limitations. We implement a fully differentiable solution in the
+open-source robotics toolkit, Drake. Our novel \emph{hybrid} approach enables
+computation of gradients for complex geometric models while reusing
+factorizations from contact resolution. We demonstrate robust simulation of
+robotic tasks at interactive rates, with accurately resolved stiction and
+contact transitions, supporting effective sim-to-real transfer.

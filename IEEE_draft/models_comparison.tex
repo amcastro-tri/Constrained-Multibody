@@ -1,0 +1,174 @@
+\section{Comparative Analysis of the Models}
+\label{sec:comparative_analysis}
+
+All models in Section \ref{sec:models_family} are convex approximations of
+contact, each with its own strengths and limitations. Hereinafter, we refer to
+each of these formulations to as SAP \cite{bib:castro2022unconstrained},
+\emph{Lagged} (section \ref{sec:lagged_model}), and \emph{Similar} (section
+\ref{sec:similar_model}). We summarize their properties and artifacts in Table
+\ref{tab:models_properties} and analyze them in detail in the following
+subsections. Artifacts are a result of the convex approximation, and are only
+present during slip, not in stiction.  Lagged does not introduce artifacts.
+
+\begin{table*}[h]
+    \centering
+    \begin{tabular}{c|c|c|c|cc|c}
+                                     Model & Consistent  & Strongly coupled &
+                                     Gliding during slip   & \multicolumn{2}{|c|}{Compliance
+                                     modulation} & Transition slip \\
+                                     & & & & Stiffness & Dissipation \\
+        \hline
+        SAP           & No  & Yes & $\mu(\delta t + \tau_d)\Vert\vf{v}_t\Vert$ &
+        $k/(1+\tilde{\mu}^2)$ &$\tau_d$ & $\sigma\,\text{w}\,\mu\,\gamma_n$\\
+        Lagged        & Yes & No  &  ---                                       &
+        --- & --- & $v_s$ \\
+        Similar       & No  & Yes & $\mu\delta t\Vert\vf{v}_t\Vert$            &
+        $k\,(1+\mu\,d\,\Vert\vf{v}_t\Vert)$ & $d/(1+\mu\,d\,\Vert\vf{v}_t\Vert)$
+        & $v_s$ \\
+    \end{tabular}
+    \caption{Properties of each convex approximation in Section \ref{sec:models_family}.}
+    \label{tab:models_properties}
+\end{table*}
+
+\subsection{Gliding During Slip}
+\label{sec:gliding_artifact}
+
+SAP, as well as the formulations from Anitescu and Todorov
+\cite{bib:anitescu2006,bib:todorov2011}, introduces a number of artifacts as the result
+of the convex approximation of contact. The most well-known artifact is that
+objects \emph{glide} at a finite offset during slip \cite{bib:mazhar2014,
+bib:horak2019, bib:castro2022unconstrained}. For SAP,
+this offset is \cite{bib:castro2022unconstrained}
+\begin{equation}
+    \phi_\text{offset} = \mu(\delta t + \tau_d)\Vert\vf{v}_t\Vert.
+    \label{eq:sap_gliding_offset}
+\end{equation}
+With zero dissipation ($\tau_d=0$), this reduces to the gliding distance $\mu\delta
+t\Vert\vf{v}_t\Vert$ in Anitescu's formulation of rigid contact
+\cite{bib:anitescu2006}. There are no artifacts during stiction.
+
+While the term $\mu\delta t\Vert\vf{v}_t\Vert$ can be negligible for small time
+steps and slip speeds, the term $\mu\tau_d\Vert\vf{v}_t\Vert$ can dominate when
+dissipation is large. Therefore, users must face the trade-off between accurate
+dissipation modeling and the magnitude of this gliding artifact, making the
+choice of this parameter cumbersome.
+
+The Similar approximation eliminates this coupling with dissipation,
+though it still introduces the offset $\mu\delta t\Vert\vf{v}_t\Vert$. We see
+this by replacing $v_n$ with $z$ from \eqref{eq:similar_grouping} into
+\eqref{eq:linear_compliance_with_hunt_crossley}. This is desirable as gliding
+vanishes as the time step size is reduced.
+
+The Lagged approximation does not introduce gliding.
+
+\subsection{Compliance Modulation}
+\label{sec:compliance_modulation}
+
+For SAP, the effective compliance during slip is $k_\text{eff} =
+k/(1+\tilde{\mu}^2)$, where $\tilde{\mu}=\mu(R_t/R_n)^{1/2}$
+\cite{bib:castro2022unconstrained} depends on the ratio of the tangential to
+normal regularization parameters. SAP chooses this ratio so that
+$\tilde{\mu}\approx0$, but it is still non-zero. We refer to this artifact as
+\emph{compliance modulation}, and it was first reported in
+\cite{bib:castro2022unconstrained}.
+
+Replacing $v_n$ with $z$ in \eqref{eq:linear_compliance_with_hunt_crossley} and
+factoring out the term $1+\mu\,d\,\Vert\vf{v}_t\Vert$, we see that during slip,
+the Similar approximation has effective stiffness $k_\text{eff} =
+k\,(1+\mu\,d\,\Vert\vf{v}_t\Vert)$ and dissipation $d_\text{eff} =
+d/(1+\mu\,d\,\Vert\vf{v}_t\Vert)$. That is, the effective stiffness increases
+while the effective dissipation decreases during slip.
+
+The Lagged approximation does not introduce compliance modulation.
+
+\subsection{Strong Coupling}
+\label{sec:strong_coupling}
+
+In the SAP and Similar models, Coulomb's law tightly couples friction and normal
+components, while the Lagged model introduces a lag in the normal force. Our
+numerical studies (Sections \ref{sec:results} and \ref{sec:applications}) show
+that this lag effect is noticeable only in high-energy impacts where normal
+forces change rapidly. Otherwise, the approximation is $\mathcal{O}(\delta t)$,
+consistent with the first-order Taylor expansion of the signed distance
+introduced in Section \ref{sec:frictionless_contact}. Moreover, Our grasp
+stability analysis (Section \ref{sec:franka_hand}) confirms that the lagged
+approximation is suitable even for highly dynamic manipulation tasks.
+
+\subsection{Consistency}
+\label{sec:consistency}
+
+In the context of ordinary differential equations (ODEs), a scheme is
+\emph{consistent} when the original set of ODEs is recovered in the limit $\delta
+t\rightarrow 0$. This is not the case for SAP and Similar models, due to the
+existence of \emph{compliance modulation} (Section
+\ref{sec:compliance_modulation}) regardless of the time step size. In particular
+for SAP, the gliding artifact does not vanish in \eqref{eq:sap_gliding_offset}
+unless dissipation is zero. Conversely, Lagged is a consistent first order
+approximation of \eqref{eq:total_impulse}.
+
+\subsection{Stick-Slip Transition}
+\label{sec:stiction_tolerance}
+
+Since the models in this work \emph{regularize} friction, transition
+between stiction and sliding occurs at a finite slip velocity. For Lagged and
+Similar models, this transition is parameterized by $\varepsilon_s$ in
+\eqref{eq:regularized_friction}, and it is fixed by the user to a value $v_s$
+which we call the \emph{stiction tolerance}.
+
+For SAP, we see from \eqref{eq:sap_friction_regularization} that stick-slip
+transitions occur at a magnitude of slip equal to
+\begin{equation}
+    v_s = \sigma\,\text{w}\,\mu\,\gamma_n,
+    \label{eq:sap_stiction_tolerance}
+\end{equation}
+where we used the fact that SAP uses $R_t = \sigma\,\text{w}$, with $\text{w}$ a
+diagonal approximation of the Delassus operator
+\cite{bib:castro2022unconstrained} (the \emph{effective inverse mass} of the
+contact). The dimensionless parameter $\sigma$ is set to $\sigma=10^{-3}$, a
+good trade-off between numerical conditioning and a tight approximation of
+stiction, as required for the simulation of manipulation applications in
+robotics. Refer to \cite{bib:castro2022unconstrained} for a thorough study of
+SAP's properties.
+
+\section{Impacts, Stiffness and Conditioning}
+\label{sec:impacts_and_conditioning}
+
+We are interested in the numerical \emph{stiffness} introduced by the
+regularization of friction as it is critical for a robust numerical
+implementation. We define $G_t= d\Vert\bgamma_t\Vert/d\Vert\vf{v}_t\Vert$ and
+examine its value at $\Vert\vf{v}_t\Vert=0$. For all approximations we find
+\begin{equation*}
+    G_t = \frac{\mu}{v_s}\tilde{\gamma}_n,
+\end{equation*}
+with $v_s$ the stiction tolerance (Table \ref{tab:models_properties}),
+$\tilde{\gamma}_n =\gamma_n$ for SAP and Similar models, and $\tilde{\gamma}_n
+=\gamma_{n,0}$ for Lagged.
+
+As seen in \eqref{eq:sap_stiction_tolerance}, SAP's stiction tolerance depends
+on impulse, often much higher during impacts than in sustained contact
+(e.g., a robot grasping an object). This effectively increases SAP's
+regularization during impacts, making the problem better-conditioned but
+reducing stiction accuracy. In contrast, Lagged and Similar solve a much stiffer
+problem given the stiction tolerance $v_s$ is constant. We confirm this in
+Section \ref{sec:clutter} in a case with impacts.
+
+The situation reverses during sustained contact, as the normal impulse depends
+mainly on object's weight, and external forces, not rapid velocity changes.
+Since impulse scales with time step size, $G_t = \mathcal{O}(\delta t)$ for
+Similar and Lagged, while SAP's $G_t = 1/R_t$ remains constant (with $R_t$ from
+\eqref{eq:sap_friction_regularization}), leading to a stiffer problem. This is
+confirmed in Section \ref{sec:clutter} as we analyze the numerical conditioning
+of the problem and solver's number of iterations.
+
+It could be argued that, for most robotics applications,
+accurately resolving stiction during impacts is unnecessary. Therefore, we
+propose a \emph{regularized} version of the Lagged model, where the
+regularization parameter is
+\begin{equation}
+    \varepsilon_s = \max(v_s, \sigma\,\text{w}\,\mu\,\gamma_{n, 0}).
+    \label{eq:regularized_vs}
+\end{equation}
+In this formulation, regularization is \emph{softened} during strong impacts as
+values of $\gamma_{n, 0}$ are higher, but a tight value bounded by $v_s$ is used
+for sustained contacts. We study the effect of this formulation in Section
+\ref{sec:clutter}.

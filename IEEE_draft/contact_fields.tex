@@ -1,0 +1,104 @@
+\documentclass[journal]{./IEEEtran/IEEEtran}
+
+\input{packages_and_custom_commands.tex}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+% Paper Title: Titles are generally capitalized except for words such as a, an,
+% and, as, at, but, by, for, in, nor, of, on, or, the, to and up, which are
+% usually not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired. Do not
+% put math or special symbols in the title.
+\title{Constrained Multibody Dynamics}
+
+% Options:
+%  - Irrotational Contact Fileds
+%  - A Convex Formulation of Irrotational Contact Fields
+
+% Author Names and IEEE memberships: Note positions of commas and nonbreaking
+% spaces ( ~ ) LaTeX will not break a structure at a ~ so this keeps an author's
+% name from being broken across two lines. Use \thanks{} to gain access to the
+% first footnote area a separate \thanks must be used for each paragraph as
+% LaTeX2e's \thanks was not built to handle multiple paragraphs.
+\author{Alejandro Castro}
+
+% The paper headers
+%\markboth{Journal of \LaTeX\ Class Files,~Vol.~14, No.~8, August~2015}%
+%{Shell \MakeLowercase{\textit{et al.}}: Bare Demo of IEEEtran.cls for IEEE
+%Journals}
+
+% make the title area
+\maketitle
+
+% Abstract:
+%\begin{abstract}
+%\input{abstract.tex}
+%\end{abstract}
+
+% Keywords:
+%\begin{IEEEkeywords}
+%Contact Modeling, Simulation and Animation, Dexterous Manipulation, Dynamics.
+%\end{IEEEkeywords}
+
+
+% For peer review papers, you can put extra information on the cover page as
+% needed: \ifCLASSOPTIONpeerreview \begin{center} \bfseries EDICS Category:
+% 3-BBND \end{center} \fi
+%
+% For peerreview papers, this IEEEtran command inserts a page break and creates
+% the second title. It will be ignored for other modes.
+\IEEEpeerreviewmaketitle
+
+% We place each section in its own file:
+%\input{introduction.tex}
+%\input{novel_contributions.tex}
+\input{mathematical_formulation.tex}
+\input{family_of_models.tex}
+\input{models_comparison.tex}
+%\input{implementation_notes.tex}
+%\input{test_cases.tex}
+%\input{applications.tex}
+%\input{limitations.tex}
+
+% Appendices:
+%\appendices
+%\input{soft_norms.tex}
+%\input{anisotropic_friction.tex}
+
+% Acknowledgment: N.B. Use section*.
+%\section*{Acknowledgment}
+%The authors would like to thank the Dynamics \& Simulation and Large Behavior Model 
+%teams at TRI for their continuous patience and support. We
+%thank William Townsend and Barrett for providing us with technical
+%specifications for the BarrettHand as well as advice and discussions on our
+%modeling approach. We thank Cody Simpson for modeling the deformable FinRay gripper.
+
+% Can use something like this to put references on a page by themselves when
+% using endfloat and the captionsoff option.
+\ifCLASSOPTIONcaptionsoff
+  \newpage
+\fi
+
+% References:
+\bibliographystyle{./IEEEtran/IEEEtran}
+\bibliography{contact_fields}
+
+% Biographies
+
+\newpage
+
+%\input{bios/alejandro_castro.tex}
+%\vspace{11pt}
+
+%\input{bios/xuchen_han.tex}
+%\vspace{11pt}
+
+%\input{bios/joe_masterjohn.tex}
+\vfill
+
+\end{document}
+
+

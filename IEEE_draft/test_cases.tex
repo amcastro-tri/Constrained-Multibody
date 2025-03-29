@@ -1,0 +1,36 @@
+\section{Test Cases}
+\label{sec:results}
+
+We analyze a series of two-dimensional cases to assess accuracy,
+quantify artifacts introduced by the convex approximations, and gain
+intuition into the physics and numerics.
+
+For all cases, we use $v_s=10^{-4}\text{ m}/\text{s}$ for Lagged and Similar,
+and $\sigma=10^{-3}$ for SAP, leading to very tight stiction modeling as
+required for simulating manipulation tasks.
+
+We estimate contact stiffness using Hertz theory. For a sphere of mass $m$ and
+radius $R$, Hertz theory predicts a penetration
+$\delta=(3mg/(4ER^{1/2}))^{2/3}$. For steel with Young's modulus $E=200\text{
+GPa}$ and using the radii and masses from Sections \ref{sec:falling_sphere} and
+\ref{sec:sliding_rod}, we obtain penetrations around $\delta\approx
+2.5\times10^{-7}\text{ m}$ and stiffnesses $k\approx 1\times
+10^{7}-2\times 10^{7}\text{ N}/\text{m}$. We use $k = 10^{7}\text{
+N}/\text{m}$ for all cases in this section.
+
+For some cases, we perform a convergence study where we compute the
+error in the positions $\mf{q}_{\delta t}$ obtained using step size $\delta t$
+against a reference $\mf{q}_\text{ref}$ as a function of the time step size
+\begin{equation*}
+    e_q(\delta t) = \left(\frac{1}{T}\int_0^T dt\Vert\mf{q}_{\delta t}(t)-\mf{q}_\text{ref}(t)\Vert^2\right)^{1/2}
+\end{equation*}
+where $T$ is simulation duration. The reference solution is obtained numerically
+using a time step 10 times smaller than the smallest time step in the
+convergence study. Since Lagged is the only approximation that is consistent
+(Section \ref{sec:consistency}), we use it to compute the reference solution.
+
+\input{conveyor_belt.tex}
+
+\input{falling_sphere.tex}
+
+\input{sliding_rod.tex}
