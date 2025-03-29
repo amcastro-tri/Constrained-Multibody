@@ -1,0 +1,127 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Constrained Dynamics of Mechanical Systems}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Preliminaries}
+
+We consider a mechanical system with configuration \( \bm{q} \in \mathbb{R}^n \)
+and generalized velocity \( \bm{v} \in \mathbb{R}^m \). The system evolves
+according to:
+
+\begin{equation}
+    \bm{M}(\bm{q}) \dot{\bm{v}} + \bm{c}(\bm{q}, \bm{v}) = \bm{\tau},
+\end{equation}
+
+where:
+\begin{itemize}
+    \item \( \bm{M}(\bm{q}) \in \mathbb{R}^{m \times m} \) is the generalized
+    mass matrix,
+    \item \( \bm{c}(\bm{q}, \bm{v}) \in \mathbb{R}^m \) includes Coriolis and
+    centrifugal effects,
+    \item \( \bm{\tau} \in \mathbb{R}^m \) is the generalized force.
+\end{itemize}
+
+The generalized coordinates evolve according to the kinematic relation:
+
+\begin{equation}
+    \dot{\bm{q}} = \bm{N}(\bm{q}) \bm{v},
+\end{equation}
+
+where \( \bm{N}(\bm{q}) \in \mathbb{R}^{n \times m} \) is the kinematics map.
+
+Holonomic constraints are defined as:
+
+\begin{equation}
+    \bm{\Phi}(\bm{q}, t) = \bm{0},
+\end{equation}
+
+where \( \bm{\Phi}: \mathbb{R}^n \times \mathbb{R} \rightarrow \mathbb{R}^k \)
+is differentiable.
+
+\section{Constrained Dynamics at the Acceleration Level}
+
+Differentiating the constraint and enforcing it at the acceleration level gives:
+
+\begin{equation}
+    \bm{J}(\bm{q}, t) \bm{N}(\bm{q}) \dot{\bm{v}} + \dot{\bm{J}}(\bm{q}, t) \bm{N}(\bm{q}) \bm{v} = -\frac{\partial \bm{\Phi}}{\partial t},
+\end{equation}
+
+where \( \bm{J} = \partial \bm{\Phi} / \partial \bm{q} \) is the constraint
+Jacobian.
+
+We enforce the constraints using Lagrange multipliers \( \bm{\lambda} \in
+\mathbb{R}^k \), resulting in:
+
+\begin{equation}
+    \bm{M}(\bm{q}) \dot{\bm{v}} + \bm{c}(\bm{q}, \bm{v}) = \bm{\tau} + \bm{N}(\bm{q})^\top \bm{J}^\top(\bm{q}, t) \bm{\lambda}.
+\end{equation}
+
+\section{Discrete Velocity-Level Formulation}
+
+To decouple integration and constraint enforcement, we use an operator splitting
+strategy.
+
+Let \( \bm{v}^* \) be the unconstrained velocity obtained using any integration
+scheme (explicit or implicit) applied to:
+
+\begin{equation}
+    \bm{M}(\bm{q}^n) \dot{\bm{v}} + \bm{c}(\bm{q}^n, \bm{v}) = \bm{\tau}.
+\end{equation}
+
+We then correct the velocity to satisfy the constraints by solving:
+
+\begin{equation}
+    \bm{M}(\bm{q}^n)(\bm{v}^{n+1} - \bm{v}^*) = \bm{N}(\bm{q}^n)^\top \bm{J}^\top(\bm{q}^n) \bm{\lambda}^{n+1}.
+\end{equation}
+
+The constraint at the velocity level is:
+
+\begin{equation}
+    \bm{J}(\bm{q}^n) \bm{N}(\bm{q}^n) \bm{v}^{n+1} = -\frac{\bm{\Phi}(\bm{q}^n, t^{n+1})}{\Delta t}.
+\end{equation}
+
+\section{Constraint Stabilization}
+
+\subsection{Projection}
+
+Given a tentative configuration \( \bm{q}^* \), the goal is to find the closest
+\( \bm{q} \) such that \( \bm{\Phi}(\bm{q}, t) = 0 \). Using Newton iteration:
+
+\begin{equation}
+    \bm{q}_{k+1} = \bm{q}_k - \bm{J}(\bm{q}_k)^\top \left( \bm{J}(\bm{q}_k) \bm{J}(\bm{q}_k)^\top \right)^{-1} \bm{\Phi}(\bm{q}_k, t).
+\end{equation}
+
+\subsection{Baumgarte Stabilization}
+
+We enforce constraints at the acceleration level with proportional-derivative
+feedback:
+
+\begin{equation}
+    \bm{J} \bm{N} \dot{\bm{v}} + \dot{\bm{J}} \bm{N} \bm{v} + 2\alpha \bm{J} \bm{N} \bm{v} + \beta^2 \bm{\Phi}(\bm{q}, t) = -\frac{\partial \bm{\Phi}}{\partial t},
+\end{equation}
+
+where \( \alpha \), \( \beta \) are tunable gains.
+
+\section{Penalty-Based Methods (Soft Constraints)}
+
+Constraints are enforced approximately by adding a penalizing force:
+
+\begin{equation}
+    \bm{\tau}_{\text{penalty}} = -k_p \bm{J}^\top \bm{\Phi}(\bm{q}, t) - k_d \bm{J}^\top \bm{J} \bm{N} \bm{v},
+\end{equation}
+
+with \( k_p \) and \( k_d \) being stiffness and damping coefficients,
+respectively. This turns the hard constraint into a stiff but solvable
+unconstrained problem.
+
+\end{document}
