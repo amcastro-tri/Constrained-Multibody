@@ -94,12 +94,91 @@ The constraint at the velocity level is:
 
 \subsection{Projection}
 
-Given a tentative configuration \( \bm{q}^* \), the goal is to find the closest
-\( \bm{q} \) such that \( \bm{\Phi}(\bm{q}, t) = 0 \). Using Newton iteration:
+Numerical integration of the dynamics often causes constraint drift, where \(
+\bm{\Phi}(\bm{q}, t) \neq 0 \) due to accumulated numerical errors. The
+projection method corrects this drift by mapping the configuration \( \bm{q}^*
+\) back onto the constraint manifold.
+
+Let \( \bm{q}^* \) be a tentative configuration that does not satisfy the
+constraint \( \bm{\Phi}(\bm{q}^*, t) \approx \bm{\varepsilon} \neq \bm{0} \).
+The goal is to find the corrected configuration \( \bm{q}_{\text{proj}} \) such
+that:
 
 \begin{equation}
-    \bm{q}_{k+1} = \bm{q}_k - \bm{J}(\bm{q}_k)^\top \left( \bm{J}(\bm{q}_k) \bm{J}(\bm{q}_k)^\top \right)^{-1} \bm{\Phi}(\bm{q}_k, t).
+    \bm{\Phi}(\bm{q}_{\text{proj}}, t) = \bm{0},
 \end{equation}
+
+and \( \bm{q}_{\text{proj}} \) is as close as possible to \( \bm{q}^* \). This
+is a constrained optimization problem:
+
+\begin{equation}
+    \bm{q}_{\text{proj}} = \arg\min_{\bm{q}} \frac{1}{2} \| \bm{q} - \bm{q}^* \|^2 \quad \text{subject to} \quad \bm{\Phi}(\bm{q}, t) = \bm{0}.
+\end{equation}
+
+\subsubsection*{Linearization and Newton Iteration}
+
+Assuming \( \bm{q}^* \) is close to the constraint manifold, we perform a
+first-order Taylor expansion of the constraint:
+
+\begin{equation}
+    \bm{\Phi}(\bm{q}_{\text{proj}}, t) \approx \bm{\Phi}(\bm{q}^*, t) + \bm{J}(\bm{q}^*, t)(\bm{q}_{\text{proj}} - \bm{q}^*) = \bm{0},
+\end{equation}
+
+where \( \bm{J}(\bm{q}, t) = \frac{\partial \bm{\Phi}}{\partial \bm{q}} \) is
+the constraint Jacobian. Rearranging gives a linear system for the correction \(
+\Delta \bm{q} \equiv \bm{q}_{\text{proj}} - \bm{q}^* \):
+
+\begin{equation}
+    \bm{J}(\bm{q}^*, t) \Delta \bm{q} = -\bm{\Phi}(\bm{q}^*, t).
+\end{equation}
+
+To compute \( \Delta \bm{q} \) efficiently and minimize its norm, we solve the
+least-squares problem using the pseudoinverse:
+
+\begin{equation}
+    \Delta \bm{q} = -\bm{J}^\top(\bm{J} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t),
+\end{equation}
+
+so the projected configuration becomes:
+
+\begin{equation}
+    \bm{q}_{\text{proj}} = \bm{q}^* - \bm{J}^\top(\bm{J} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t).
+\end{equation}
+
+This operation projects \( \bm{q}^* \) orthogonally onto the constraint surface,
+in the Euclidean sense.
+
+\subsubsection*{Iterative Newton-Raphson Correction}
+
+The linearized update is only locally accurate. To enforce the constraint up to
+a desired tolerance, we apply the correction iteratively. At each iteration \( k
+\), we compute:
+
+\begin{align}
+    \bm{\Phi}_k &= \bm{\Phi}(\bm{q}_k, t), \\
+    \bm{J}_k &= \frac{\partial \bm{\Phi}}{\partial \bm{q}} (\bm{q}_k, t), \\
+    \Delta \bm{q}_k &= -\bm{J}_k^\top (\bm{J}_k \bm{J}_k^\top)^{-1} \bm{\Phi}_k, \\
+    \bm{q}_{k+1} &= \bm{q}_k + \Delta \bm{q}_k.
+\end{align}
+
+The iteration continues until \( \| \bm{\Phi}(\bm{q}_k, t) \| < \epsilon \) for
+some small threshold \( \epsilon \). This Newton-based projection ensures that
+\( \bm{q}_{\text{proj}} \) lies on the constraint manifold up to numerical
+precision.
+
+\subsubsection*{Remarks}
+
+\begin{itemize}
+    \item The method assumes \( \bm{J} \bm{J}^\top \) is invertible. This
+    requires that the constraints be independent and not overdetermined.
+    \item If the system has mass-inertia structure, the projection can be
+    modified to minimize in the kinetic energy norm using the generalized mass
+    matrix \( \bm{M} \). This leads to:
+    \[
+        \Delta \bm{q} = -\bm{M}^{-1} \bm{J}^\top (\bm{J} \bm{M}^{-1} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t),
+    \]
+    which corresponds to the least kinetic energy correction.
+\end{itemize}
 
 \subsection{Baumgarte Stabilization}
 
