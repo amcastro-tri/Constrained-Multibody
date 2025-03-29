@@ -2,10 +2,12 @@
 \usepackage{amsmath, amssymb}
 \usepackage{bm}
 \usepackage{geometry}
+\usepackage{cite}
+
 \geometry{margin=1in}
 
 \title{Constrained Dynamics of Mechanical Systems}
-\author{}
+\author{Alejandro Castro}
 \date{}
 
 \begin{document}
@@ -16,7 +18,8 @@
 
 We consider a mechanical system with configuration \( \bm{q} \in \mathbb{R}^n \)
 and generalized velocity \( \bm{v} \in \mathbb{R}^m \). The system evolves
-according to:
+according to
+\cite{bib:featherstone2008_rigid_body_dynamics_algorithms,bib:jain2010_robot_multibody_dynamics}:
 
 \begin{equation}
     \bm{M}(\bm{q}) \dot{\bm{v}} + \bm{c}(\bm{q}, \bm{v}) = \bm{\tau},
@@ -97,7 +100,7 @@ The constraint at the velocity level is:
 Numerical integration of the dynamics often causes constraint drift, where \(
 \bm{\Phi}(\bm{q}, t) \neq 0 \) due to accumulated numerical errors. The
 projection method corrects this drift by mapping the configuration \( \bm{q}^*
-\) back onto the constraint manifold.
+\) back onto the constraint manifold \cite{bib:cline2002rigid}.
 
 Let \( \bm{q}^* \) be a tentative configuration that does not satisfy the
 constraint \( \bm{\Phi}(\bm{q}^*, t) \approx \bm{\varepsilon} \neq \bm{0} \).
@@ -203,4 +206,8 @@ with \( k_p \) and \( k_d \) being stiffness and damping coefficients,
 respectively. This turns the hard constraint into a stiff but solvable
 unconstrained problem.
 
+\bibliographystyle{plain}  % or 'alpha', 'ieeetr', etc.
+\bibliography{constrained_multibody}  % assumes your .bib file is named references.bib
+
 \end{document}
+
