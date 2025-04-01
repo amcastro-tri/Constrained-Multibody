@@ -1,155 +1,285 @@
 \documentclass{article}
-\usepackage{amsmath, amssymb}
+
+\usepackage{amsmath} 
+\usepackage{amsfonts}
+\usepackage{mathtools} 
+\usepackage{amssymb}
 \usepackage{bm}
 \usepackage{geometry}
 \usepackage{cite}
+\usepackage[english]{babel}
+\usepackage{amsthm}
+
+% Math Shortcuts: Vector Font: For 3D vectors.
+\newcommand{\vf}[1]{{\mf{#1}}}
+% Matrix Font: for matrices, arrays and concatenation of 3D vectors.
+\newcommand{\mf}[1]{{\mathbf{#1}}}
+
+% Bold greek symbols:
+\newcommand{\bgamma}{{\bm\gamma}} \newcommand{\btgamma}{{\mf{\tilde\gamma}}}
+\newcommand{\bsigma}{{\bm\sigma}}
+\newcommand{\bxi}{{\bm\xi}}
+\newcommand{\btheta}{{\bm\theta}}
+
+
+% Nice customizable remark boxes.
+\usepackage[framemethod=TikZ]{mdframed}
+\newmdenv[
+  linewidth=1pt,
+  linecolor=gray,
+  backgroundcolor=gray!10,
+  roundcorner=5pt,
+  skipabove=10pt,
+  skipbelow=10pt,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+  innerleftmargin=8pt,
+  innerrightmargin=8pt,
+  nobreak=true   % <-- prevents page breaks inside
+]{remarkbox}
+\newenvironment{remark}{\begin{remarkbox}\textbf{Remark.}~}{\end{remarkbox}}
 
 \geometry{margin=1in}
 
-\title{Constrained Dynamics of Mechanical Systems}
-\author{Alejandro Castro}
-\date{}
-
 \begin{document}
 
-\maketitle
+\begin{center}
+    {\LARGE \textbf{Notes on Constrained Multibody Dynamics}}\\[0.5em]
+    {\large Alejandro Castro}\\[0.5em]
+    {\large April 1, 2025}
+\end{center}
 
 \section{Preliminaries}
 
-We consider a mechanical system with configuration \( \bm{q} \in \mathbb{R}^n \)
-and generalized velocity \( \bm{v} \in \mathbb{R}^m \). The system evolves
-according to
+We consider a mechanical system with generalized positions $\mf{q} \in
+\mathbb{R}^{n_q}$ and generalized velocities $\mf{v} \in \mathbb{R}^{n_v}$,
+where $n_q$ and $n_v$ are the number of generalized positions and velocities,
+respectively.
+
+The system evolves according to
 \cite{bib:featherstone2008_rigid_body_dynamics_algorithms,bib:jain2010_robot_multibody_dynamics}:
 
+\begin{eqnarray}
+    &\mf{M}(\mf{q}) \dot{\mf{v}} + \mf{c}(\mf{q}, \mf{v}) = \bm{\tau},
+    \label{eq:momentum_balance}\\    
+    &\dot{\mf{q}} = \mf{N}(\mf{q})\mf{v},
+    \label{eq:kinematic_map}
+\end{eqnarray}
+
+where $\mf{M}(\mf{q}) \in \mathbb{R}^{{n_v} \times {n_v}}$ is the mass matrix,
+$\mf{c}(\mf{q}, \mf{v}) \in \mathbb{R}^{n_v}$ includes Coriolis and centrifugal
+effects, $\bm{\tau} \in \mathbb{R}^{n_v}$ are generalized forces, and
+$\mf{N}(\mf{q})$ is the kinematic map that relates time derivatives of the
+generalized positions to generalized velocities \cite{bib:diebel2006}.
+
+\begin{remark}
+The above equations are a nice compact way to describe the dynamics of a general
+system, including articulated bodies (say robots or even ships with their
+propellers and rudders).
+When only a single rigid body is considered, the mass matrix boils down to something like:
+\begin{equation*}
+    \mf{M}(\mf{q}) = \begin{bmatrix}
+        \mf{I}(\mf{q}) & \vf{p}(\mf{q})_\times \\
+        \vf{p}(\mf{q})_\times^T & m \mathbf{I}_3
+        \end{bmatrix}
+\end{equation*}
+where, for an inertia computed about a center point $B_o$, $\vf{p}$ is the
+position vector of the center of mass from $B_o$ (zero if $B_o$ is the CoM), $m$
+is the body mass, $\mf{I}(\mf{q})$ is the rotational inertia about $B_o$ (where
+each component corresponds to the moments and products of inertia).
+
+For this case the generalized forces $\bm{\tau}$ correspond to the torques and
+moments on the rigid body.
+\end{remark}  
+
+\begin{remark}
+For the typical case where $B_o$ is the CoM and we measure velocities in an
+inertial frame, the expression for $\mf{c}(\mf{q}, \mf{v})$ can be found in
+\cite[\S 2.3.1]{bib:jain2010_robot_multibody_dynamics}.
+\end{remark}
+
+\begin{remark}
+There are many ways to represent orientations. The two most common ones are
+quaternions and Cardan angles (roll-pitch-yaw). Similarly, for generalized
+velocities the two most common choices are angular velocities expressed in the
+world or in the body frame (I personally prefer world frame, though body-frame
+is extremely common). Whichever the choice, we can find the angular component of
+the kinematics map (typically the translational part trivially will be identity)
+in \cite[\S 5.6]{bib:diebel2006} for Cardan angles and in \cite[\S
+6.6]{bib:diebel2006} for quaternions.
+\end{remark}
+
+We wish to integrate the system
+\eqref{eq:momentum_balance}-\eqref{eq:kinematic_map} forward in time, subject to
+holonomic constraints described as:
+
 \begin{equation}
-    \bm{M}(\bm{q}) \dot{\bm{v}} + \bm{c}(\bm{q}, \bm{v}) = \bm{\tau},
+    \mf{\Phi}(\mf{q}, t) = \mf{0},
 \end{equation}
 
-where:
-\begin{itemize}
-    \item \( \bm{M}(\bm{q}) \in \mathbb{R}^{m \times m} \) is the generalized
-    mass matrix,
-    \item \( \bm{c}(\bm{q}, \bm{v}) \in \mathbb{R}^m \) includes Coriolis and
-    centrifugal effects,
-    \item \( \bm{\tau} \in \mathbb{R}^m \) is the generalized force.
-\end{itemize}
+such that $\mf{\Phi}: \mathbb{R}^{n_q} \times \mathbb{R} \rightarrow \mathbb{R}^k$
+imposes $k$ constraint equations on the dynamics of the system.
 
-The generalized coordinates evolve according to the kinematic relation:
+\begin{remark}
+As an example, consider the experiment of a model scale ship in a towing tank,
+held by mount that imposes the ship to a specified heave $h(t)$, and allows it
+to pitch freely. All other motions are constrained.
 
-\begin{equation}
-    \dot{\bm{q}} = \bm{N}(\bm{q}) \bm{v},
-\end{equation}
+For this case, the constraint function will be:
+\begin{eqnarray*}
+    \mf{\Phi}(\mf{q}, t) = \begin{bmatrix}
+        \phi\\
+        \psi\\
+        x\\
+        y\\
+        z - h(t)
+    \end{bmatrix}  
+\end{eqnarray*}
+where, as generalized coordinates I am using $\mf{q}=[\phi, \theta, \psi,
+x, y, z]^T$, with $\phi, \theta, \psi$ the roll, pitch and yaw angles,
+respectively.
 
-where \( \bm{N}(\bm{q}) \in \mathbb{R}^{n \times m} \) is the kinematics map.
-
-Holonomic constraints are defined as:
-
-\begin{equation}
-    \bm{\Phi}(\bm{q}, t) = \bm{0},
-\end{equation}
-
-where \( \bm{\Phi}: \mathbb{R}^n \times \mathbb{R} \rightarrow \mathbb{R}^k \)
-is differentiable.
+\end{remark}    
 
 \section{Constrained Dynamics at the Acceleration Level}
 
-Differentiating the constraint and enforcing it at the acceleration level gives:
+Differentiating the constraint (twice) and enforcing it at the acceleration
+level gives:
 
 \begin{equation}
-    \bm{J}(\bm{q}, t) \bm{N}(\bm{q}) \dot{\bm{v}} + \dot{\bm{J}}(\bm{q}, t) \bm{N}(\bm{q}) \bm{v} = -\frac{\partial \bm{\Phi}}{\partial t},
+    \mf{J}(\mf{q}) \dot{\mf{v}} + \mf{b}(\mf{q},\mf{v},t) = \mf{0}
 \end{equation}
 
-where \( \bm{J} = \partial \bm{\Phi} / \partial \bm{q} \) is the constraint
-Jacobian.
+where \( \mf{J} = \partial \mf{\Phi}/\partial\mf{q}\,\mf{N}(\mf{q})\) is the
+constraint Jacobian and $\mf{b}(\mf{q},\mf{v},t)$ is the acceleration bias.
 
-We enforce the constraints using Lagrange multipliers \( \bm{\lambda} \in
-\mathbb{R}^k \), resulting in:
+\begin{remark}
+From now on I'll consider the most common case of a separable constraint of the
+form $\mf{\Phi}(\mf{q}, t) = \mf{\Phi}_q(\mf{q}) + \mf{\Phi}_t(t)$. For this
+case $\mf{J}(\mf{q}) = \partial\mf{\Phi}_q/\partial\mf{q}\,\mf{N}(\mf{q})$ and
+$\mf{b}= \dot{\mf{J}}\mf{v}+d^2\Phi_t/dt^2$.
+\end{remark}
 
-\begin{equation}
-    \bm{M}(\bm{q}) \dot{\bm{v}} + \bm{c}(\bm{q}, \bm{v}) = \bm{\tau} + \bm{N}(\bm{q})^\top \bm{J}^\top(\bm{q}, t) \bm{\lambda}.
-\end{equation}
+We enforce the constraints using Lagrange multipliers \( \mf{\lambda} \in
+\mathbb{R}^k \), resulting in the constraint dynamics:
+
+\begin{eqnarray}
+    &\mf{M}(\mf{q}) \dot{\mf{v}} + \mf{c}(\mf{q}, \mf{v}) = \bm{\tau} + \mf{J}^T(\mf{q}) \mf{\lambda},\\    
+    &\dot{\mf{q}} = \mf{N}(\mf{q})\mf{v},\\
+    &\mf{J}(\mf{q}) \dot{\mf{v}} + \mf{b}(\mf{q},\mf{v},t) = \mf{0},\\
+    &\mf{\Phi}(\mf{q}, t) = \mf{0}.
+\end{eqnarray}
+
+While these equations describe the continuous-time evolution of the system, they
+are not quite useful for numerical integration. For numerical integration we
+usually formulate the same equations at the velocity level.
 
 \section{Discrete Velocity-Level Formulation}
 
 To decouple integration and constraint enforcement, we use an operator splitting
 strategy.
 
-Let \( \bm{v}^* \) be the unconstrained velocity obtained using any integration
-scheme (explicit or implicit) applied to:
+Let \( \mf{v}^* \) be the unconstrained velocity obtained using any integration
+scheme applied to:
 
 \begin{equation}
-    \bm{M}(\bm{q}^n) \dot{\bm{v}} + \bm{c}(\bm{q}^n, \bm{v}) = \bm{\tau}.
+    \mf{M}(\mf{q}) \dot{\mf{v}} + \mf{c}(\mf{q}, \mf{v}) = \bm{\tau}.
 \end{equation}
+Say for instance, we use RK4 or Crank-Nicolson to compute $\mf{v}^*$.
 
 We then correct the velocity to satisfy the constraints by solving:
 
 \begin{equation}
-    \bm{M}(\bm{q}^n)(\bm{v}^{n+1} - \bm{v}^*) = \bm{N}(\bm{q}^n)^\top \bm{J}^\top(\bm{q}^n) \bm{\lambda}^{n+1}.
+    \mf{M}(\mf{q}^n)(\mf{v}^{n+1} - \mf{v}^*) = \mf{J}^T(\mf{q}^n) \mf{\lambda}^{n+1},
+    \label{eq:discrete_momentum}
 \end{equation}
+where now $\mf{\lambda}^{n+1}$ contain impulses (forces times time step $h$).
 
-The constraint at the velocity level is:
-
+We obtain the constraint at the velocity level by differentiating it once:
 \begin{equation}
-    \bm{J}(\bm{q}^n) \bm{N}(\bm{q}^n) \bm{v}^{n+1} = -\frac{\bm{\Phi}(\bm{q}^n, t^{n+1})}{\Delta t}.
+    \mf{J}^n\mf{v}^{n+1} = -\frac{\partial\mf{\Phi}}{\partial t}.
+    \label{eq:velocity_constraint}
 \end{equation}
+
+We can solve for the Lagrange multipliers by substitution of
+\eqref{eq:velocity_constraint} into \eqref{eq:discrete_momentum}:
+\begin{equation}
+    \mf{\lambda}^{n+1} = -(\mf{J}\mf{M}\mf{J}^T)^{-1}(\frac{\partial\mf{\Phi}}{\partial t} + \mf{J}\mf{v}^*).
+\end{equation}
+
+We then use $\mf{\lambda}^{n+1}$ in \eqref{eq:discrete_momentum} to compute
+${\mf{v}}^{n+1}$. With the velocities, we can now advance the configuration to
+${\mf{q}}^{n+1}$.
+
+\begin{remark}
+ Equation \eqref{eq:discrete_momentum} opens the door to a great modular way to
+ reuse your code and update it to incorporate constraints. You can use your
+ existing code to obtain $\mf{v}^*$. Then Lagrange multipliers can be used to
+ compute $\mf{v}^{n+1}$ from $\mf{v}^*$, plus the \emph{projection} method below
+ to mitigate constraint drift.
+ \end{remark}
 
 \section{Constraint Stabilization}
 
 \subsection{Projection}
 
 Numerical integration of the dynamics often causes constraint drift, where \(
-\bm{\Phi}(\bm{q}, t) \neq 0 \) due to accumulated numerical errors. The
-projection method corrects this drift by mapping the configuration \( \bm{q}^*
-\) back onto the constraint manifold \cite{bib:cline2002rigid}.
+\mf{\Phi}(\mf{q}, t) \neq 0 \) due to accumulated numerical errors. The
+projection method corrects this drift by mapping the configuration back onto the
+constraint manifold \cite{bib:cline2002rigid}.
 
-Let \( \bm{q}^* \) be a tentative configuration that does not satisfy the
-constraint \( \bm{\Phi}(\bm{q}^*, t) \approx \bm{\varepsilon} \neq \bm{0} \).
-The goal is to find the corrected configuration \( \bm{q}_{\text{proj}} \) such
+Let \( \mf{q}^* \) be a tentative configuration (computed by advancing the
+dynamics forward in time as in the previous section) that does not satisfy the
+constraint, i.e. \( \mf{\Phi}(\mf{q}^*, t) = \mf{\varepsilon} \neq \mf{0} \).
+The goal is to find a corrected configuration \( \mf{q}_{\text{proj}} \) such
 that:
 
 \begin{equation}
-    \bm{\Phi}(\bm{q}_{\text{proj}}, t) = \bm{0},
+    \mf{\Phi}(\mf{q}_{\text{proj}}, t) = \mf{0},
 \end{equation}
 
-and \( \bm{q}_{\text{proj}} \) is as close as possible to \( \bm{q}^* \). This
+and \( \mf{q}_{\text{proj}} \) is as close as possible to \( \mf{q}^* \). This
 is a constrained optimization problem:
 
-\begin{equation}
-    \bm{q}_{\text{proj}} = \arg\min_{\bm{q}} \frac{1}{2} \| \bm{q} - \bm{q}^* \|^2 \quad \text{subject to} \quad \bm{\Phi}(\bm{q}, t) = \bm{0}.
-\end{equation}
+\begin{eqnarray}
+    &\mf{q}_{\text{proj}} = \arg\min_{\mf{q}} \frac{1}{2} \| \mf{q} - \mf{q}^* \|^2 \\
+    &\text{s.t.} \quad \mf{\Phi}(\mf{q}, t) = \mf{0}.
+    \label{eq:projection}
+\end{eqnarray}
 
 \subsubsection*{Linearization and Newton Iteration}
 
-Assuming \( \bm{q}^* \) is close to the constraint manifold, we perform a
+Assuming \( \mf{q}^* \) is close to the constraint manifold, we perform a
 first-order Taylor expansion of the constraint:
 
 \begin{equation}
-    \bm{\Phi}(\bm{q}_{\text{proj}}, t) \approx \bm{\Phi}(\bm{q}^*, t) + \bm{J}(\bm{q}^*, t)(\bm{q}_{\text{proj}} - \bm{q}^*) = \bm{0},
+    \mf{\Phi}(\mf{q}_{\text{proj}}, t) \approx \mf{\Phi}(\mf{q}^*, t) + \mf{J}_q^*\Delta
+    \mf{q} = \mf{0},
 \end{equation}
-
-where \( \bm{J}(\bm{q}, t) = \frac{\partial \bm{\Phi}}{\partial \bm{q}} \) is
-the constraint Jacobian. Rearranging gives a linear system for the correction \(
-\Delta \bm{q} \equiv \bm{q}_{\text{proj}} - \bm{q}^* \):
+with $\mf{J}_q^*=\frac{\partial \mf{\Phi}}{\partial \mf{q}}(\mf{q}^*)$ and $\Delta
+\mf{q} = \mf{q}_{\text{proj}} - \mf{q}^*$.
 
 \begin{equation}
-    \bm{J}(\bm{q}^*, t) \Delta \bm{q} = -\bm{\Phi}(\bm{q}^*, t).
+    \mf{J}_q^* \Delta \mf{q} = -\mf{\Phi}^*.
 \end{equation}
 
-To compute \( \Delta \bm{q} \) efficiently and minimize its norm, we solve the
-least-squares problem using the pseudoinverse:
+With this linear approximation the non-linear optimization in
+\eqref{eq:projection} becomes the quadratic program (QP):
+\begin{eqnarray}
+    \Delta\mf{q} = \arg\min_{\mf{q}} \frac{1}{2} \| \Delta\mf{q} \|^2 \\
+    \text{s.t.} \quad \mf{J}_q^*\Delta\mf{q} = -\mf{\Phi}^*.
+    \label{eq:linear_projection}
+\end{eqnarray}
 
+This can be solved using Lagrange multipliers. The result is:
 \begin{equation}
-    \Delta \bm{q} = -\bm{J}^\top(\bm{J} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t),
+    \Delta \mf{q} = -\mf{J}_q^T(\mf{J}_q \mf{J}_q^T)^{-1} \mf{\Phi}(\mf{q}^*, t),
 \end{equation}
 
-so the projected configuration becomes:
-
-\begin{equation}
-    \bm{q}_{\text{proj}} = \bm{q}^* - \bm{J}^\top(\bm{J} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t).
-\end{equation}
-
-This operation projects \( \bm{q}^* \) orthogonally onto the constraint surface,
-in the Euclidean sense.
+When constraints are independent and not overdetermined $\mf{J}_q \mf{J}_q^T$ is
+invertible. When this is not true, we can compute the least-squares solution
+using the pseudoinverse of $\mf{J}_q \mf{J}_q^T$. This operation projects \(
+\mf{q}^* \) orthogonally onto the constraint surface, in the Euclidean sense.
 
 \subsubsection*{Iterative Newton-Raphson Correction}
 
@@ -158,55 +288,126 @@ a desired tolerance, we apply the correction iteratively. At each iteration \( k
 \), we compute:
 
 \begin{align}
-    \bm{\Phi}_k &= \bm{\Phi}(\bm{q}_k, t), \\
-    \bm{J}_k &= \frac{\partial \bm{\Phi}}{\partial \bm{q}} (\bm{q}_k, t), \\
-    \Delta \bm{q}_k &= -\bm{J}_k^\top (\bm{J}_k \bm{J}_k^\top)^{-1} \bm{\Phi}_k, \\
-    \bm{q}_{k+1} &= \bm{q}_k + \Delta \bm{q}_k.
+    \mf{\Phi}^k &= \mf{\Phi}(\mf{q}^k, t), \\
+    \mf{J}_q^k &= \frac{\partial \mf{\Phi}}{\partial \mf{q}} (\mf{q}^k, t), \\
+    \Delta \mf{q}^k &= -{\mf{J}_q^k}^T (\mf{J}_q^k {\mf{J}_q^k}^T)^{-1} \mf{\Phi}^k, \\
+    \mf{q}_{k+1} &= \mf{q}^k + \Delta \mf{q}^k.
 \end{align}
 
-The iteration continues until \( \| \bm{\Phi}(\bm{q}_k, t) \| < \epsilon \) for
+The iteration continues until \( \| \mf{\Phi}(\mf{q}^k, t) \| < \epsilon \) for
 some small threshold \( \epsilon \). This Newton-based projection ensures that
-\( \bm{q}_{\text{proj}} \) lies on the constraint manifold up to numerical
+\( \mf{q}_{\text{proj}} \) lies on the constraint manifold up to numerical
 precision.
 
-\subsubsection*{Remarks}
-
+\begin{remark}    
 \begin{itemize}
-    \item The method assumes \( \bm{J} \bm{J}^\top \) is invertible. This
-    requires that the constraints be independent and not overdetermined.
-    \item If the system has mass-inertia structure, the projection can be
-    modified to minimize in the kinetic energy norm using the generalized mass
-    matrix \( \bm{M} \). This leads to:
+    \item The method assumes \( \mf{J}_q \mf{J}_q^T \) is invertible. This
+    requires that the constraints be independent and not overdetermined. We can
+    use the pseudoinverse of $\mf{J}_q \mf{J}_q^T$ to obtaine the least-squares
+    solution.
+    \item The projection can be
+    modified to minimize in the kinetic energy norm \cite{bib:cline2002rigid}
+    using the generalized mass matrix \( \mf{M} \) . This leads to:
     \[
-        \Delta \bm{q} = -\bm{M}^{-1} \bm{J}^\top (\bm{J} \bm{M}^{-1} \bm{J}^\top)^{-1} \bm{\Phi}(\bm{q}^*, t),
+        \Delta \mf{q} = -\mf{M}^{-1} \mf{J}_q^T (\mf{J}_q \mf{M}^{-1} \mf{J}_q^T)^{-1} \mf{\Phi}(\mf{q}^*, t),
     \]
     which corresponds to the least kinetic energy correction.
 \end{itemize}
+\end{remark}
 
 \subsection{Baumgarte Stabilization}
 
-We enforce constraints at the acceleration level with proportional-derivative
+This is an alternative to the projection method to correct for constraint drift.
+We enforce constraints at the velocity level with proportional-derivative
 feedback:
 
 \begin{equation}
-    \bm{J} \bm{N} \dot{\bm{v}} + \dot{\bm{J}} \bm{N} \bm{v} + 2\alpha \bm{J} \bm{N} \bm{v} + \beta^2 \bm{\Phi}(\bm{q}, t) = -\frac{\partial \bm{\Phi}}{\partial t},
+    \dot{\mf{\Phi}} + \frac{1}{\tau}\mf{\Phi} = \mf{0},
+\end{equation}
+where $\tau$ is a time constant usually chosen to be a factor of the time step
+size $h$.
+
+We use this equation in terms of velocities to replace \eqref{eq:velocity_constraint}:
+\begin{equation}
+    \mf{J}^n\mf{v}^{n+1} = -\frac{\partial\mf{\Phi}}{\partial t} - \frac{1}{\tau}\mf{\Phi}.
 \end{equation}
 
-where \( \alpha \), \( \beta \) are tunable gains.
+\begin{remark}
+This is a simple method when compared to projection. However choosing $\tau$
+requires tuning and it can make the system unstable. Moreover, this method
+effectively allows small deviations from a perfect constraint. In other words,
+we added numerical compliance.
+\end{remark}
+
+Below I present what I think it's the simplest method to implement. It does not
+require Lagrange multipliers, and constraint drift is controlled in terms of
+physically compliant forces.
 
 \section{Penalty-Based Methods (Soft Constraints)}
 
-Constraints are enforced approximately by adding a penalizing force:
-
+Constraints are enforced approximately by using a model of compliance, where the
+Lagrange multipliers follow a spring-damper law:
 \begin{equation}
-    \bm{\tau}_{\text{penalty}} = -k_p \bm{J}^\top \bm{\Phi}(\bm{q}, t) - k_d \bm{J}^\top \bm{J} \bm{N} \bm{v},
+    \bm{\lambda} = -h(k_p \mf{\Phi}(\mf{q}, t) + k_d \dot{\mf{\Phi}}(\mf{q}, t)),
 \end{equation}
+where the time step $h$ is needed for impulses instead of forces in a
+velocity-level formulation.
 
 with \( k_p \) and \( k_d \) being stiffness and damping coefficients,
-respectively. This turns the hard constraint into a stiff but solvable
-unconstrained problem.
+respectively. Different stiffness and damping can be used for each constraint.
+Typically there will be a an easy physical interpretation of these equations.
+For instance, for the towing tank experiment example above, those coefficients
+would model a compliant (not rigid) mounting point. Very hight stiffness values
+can be used in practice without affecting stability (we must of course use
+implicit methods).
 
-\bibliographystyle{plain}  % or 'alpha', 'ieeetr', etc.
+
+We now use the approximations:
+\begin{eqnarray}
+    \mf{q}^{n+1} \approx \mf{q}^{n} + h \mf{N}^n \mf{v}^{n+1},\\
+    \mf{\Phi}^{n+1} \approx \mf{\Phi}^{n} + h \mf{J}^n \mf{v}^{n+1},\\
+    \dot{\mf{\Phi}}^{n+1} \approx \mf{J}^n \mf{v}^{n+1} + \frac{\partial\mf{\Phi}}{\partial t}^{n+1}.
+\end{eqnarray}
+
+With these approximations, we can write the (compliant) Lagrange multipliers
+implicitly in the next time step generalized velocity $\mf{v}^{n+1}$:
+\begin{equation}
+    \bm{\lambda} = -h(k_p + h k_d) \mf{J}^n \mf{v}^{n+1} - h\left(k_p\mf{\Phi}^{n}+k_d\frac{\partial\mf{\Phi}}{\partial t}^{n+1}\right).
+\end{equation}
+
+We can now incorporate these forces implicitly in \eqref{eq:discrete_momentum},
+solve for the next time step velocities, and advance configurations:
+\begin{eqnarray}
+    \mf{v}^{n+1} = \left(\mf{M}^n + h(k_p + h k_d){\mf{J}^n}^T\mf{J}^n\right)^{-1}\left(\mf{M}^n\mf{v}^*-h\left(k_p\mf{\Phi}^{n}+k_d\frac{\partial\mf{\Phi}}{\partial t}^{n+1}\right)\right),
+    \label{eq:compliant_momentum}\\
+    \mf{q}^{n+1} = \mf{q}^{n} + h \mf{N}^n \mf{v}^{n+1}.
+    \label{eq:configuraiton_update}
+\end{eqnarray}
+
+Notice that, unlike with projection methods, matrix $\mf{M}^n + h(k_p + h
+k_d){\mf{J}^n}^T\mf{J}^n$ is invertible always, given that the mass matrix is
+positive definite and ${\mf{J}^n}^T\mf{J}^n$ is semi positive definite. This
+property is expected given the physical nature of the compliant forces (while
+rigid constraints are just an approximation of reality).
+
+\begin{remark}
+In case it wasn't clear, equations
+\eqref{eq:compliant_momentum}-\eqref{eq:configuraiton_update} is what I
+recommend as a first (final?) pass. I decided to include projection methods for
+completeness and to introduce notation. Also so that you could see how much more
+complex they are to implement for no additional gain really. 
+
+In contrast, compliant forces are very easy to implement and work great in
+practice. Large values of stiffness and damping do not make the numerics harder,
+especially so for a system of a single rigid body.
+\end{remark}
+
+\begin{remark}
+You can always implement a projection method at a later stage if desired. The
+only advantage if any, might be that thy are parameter free.
+\end{remark}    
+
+\bibliographystyle{unsrt}  % or 'alpha', 'ieeetr', etc.
 \bibliography{constrained_multibody}  % assumes your .bib file is named references.bib
 
 \end{document}
